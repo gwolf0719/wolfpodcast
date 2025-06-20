@@ -9,6 +9,8 @@ abstract class PlayerRepository {
   Future<double> getPlaybackSpeed();
   Stream<Duration> get position;
   Stream<bool> get isPlaying;
+  Stream<Duration> get positionStream;
+  Stream<dynamic> get playbackStateStream;
   
   /// 設置音量
   /// [volume] 音量大小，範圍 0.0 到 1.0

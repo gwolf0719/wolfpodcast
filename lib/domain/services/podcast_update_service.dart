@@ -52,6 +52,7 @@ class PodcastUpdateService {
         await _podcastRepository.refreshPodcast(podcast.id);
       }
     } catch (e) {
+      // ignore: avoid_print
       print('Error updating podcasts: $e');
     }
   }

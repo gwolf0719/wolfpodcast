@@ -5,7 +5,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:audio_session/audio_session.dart';
 
 import '../../domain/entities/episode.dart';
-import '../../domain/entities/playlist.dart';
+
 
 class AudioPlayerService extends BaseAudioHandler {
   static AudioPlayerService? _instance;
@@ -23,13 +23,20 @@ class AudioPlayerService extends BaseAudioHandler {
   bool _isInitialized = false;
 
   // 播放狀態流
-  @override
-  BehaviorSubject<PlaybackState> get playbackState => 
+  final BehaviorSubject<PlaybackState> _playbackStateSubject = 
       BehaviorSubject<PlaybackState>.seeded(PlaybackState());
 
-  // 播放狀態流
-  Stream<PlaybackState> get playerState => _audioPlayer.playbackEventStream
-      .map((event) => _transformPlaybackEvent(event));
+  @override
+  BehaviorSubject<PlaybackState> get playbackState => _playbackStateSubject;
+
+  // 音頻播放器狀態流
+  Stream<PlayerState> get playerStateStream => _audioPlayer.playerStateStream;
+  
+  // 播放進度流
+  Stream<Duration> get positionStream => _audioPlayer.positionStream;
+
+  // 正在播放狀態流
+  Stream<bool> get playingStream => _audioPlayer.playingStream;
 
   // 當前播放項目
   Stream<MediaItem?> get currentMediaItem => _currentMediaItemSubject.stream;
@@ -51,18 +58,33 @@ class AudioPlayerService extends BaseAudioHandler {
 
   @override
   Future<void> prepare() async {
+    if (_isInitialized) return;
+    
+    // 初始化音頻會話
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
+    
     await _audioPlayer.setAudioSource(ConcatenatingAudioSource(children: []));
     
     // 監聽播放完成事件
     _audioPlayer.playerStateStream.listen((state) {
+      _updatePlaybackState();
       if (state.processingState == ProcessingState.completed) {
         _onEpisodeCompleted();
       }
     });
+
+    // 監聽位置變化
+    _audioPlayer.positionStream.listen((position) {
+      _updatePlaybackState();
+    });
+
+    _isInitialized = true;
   }
 
   @override
   Future<void> play() async {
+    await prepare();
     await _audioPlayer.play();
   }
 
@@ -90,6 +112,7 @@ class AudioPlayerService extends BaseAudioHandler {
       if (nextIndex != null) {
         await _audioPlayer.seek(Duration.zero, index: nextIndex);
         await _audioPlayer.play();
+        _updateCurrentMediaItem(nextIndex);
       }
     }
   }
@@ -102,6 +125,7 @@ class AudioPlayerService extends BaseAudioHandler {
       if (prevIndex != null) {
         await _audioPlayer.seek(Duration.zero, index: prevIndex);
         await _audioPlayer.play();
+        _updateCurrentMediaItem(prevIndex);
       }
     }
   }
@@ -116,8 +140,19 @@ class AudioPlayerService extends BaseAudioHandler {
     return _audioPlayer.speed;
   }
 
+  /// 設置音量
+  Future<void> setVolume(double volume) async {
+    await _audioPlayer.setVolume(volume);
+  }
+
+  /// 獲取音量
+  Future<double> getVolume() async {
+    return _audioPlayer.volume;
+  }
+
   // 播放單個集數
   Future<void> playEpisode(Episode episode) async {
+    await prepare();
     final mediaItem = _episodeToMediaItem(episode);
     await updateQueue([mediaItem]);
     await skipToQueueItem(0);
@@ -126,6 +161,7 @@ class AudioPlayerService extends BaseAudioHandler {
 
   // 播放播放清單
   Future<void> playPlaylist(List<Episode> episodes, {int startIndex = 0}) async {
+    await prepare();
     final mediaItems = episodes.map(_episodeToMediaItem).toList();
     await updateQueue(mediaItems);
     await skipToQueueItem(startIndex);
@@ -176,7 +212,7 @@ class AudioPlayerService extends BaseAudioHandler {
   Future<void> skipToQueueItem(int index) async {
     if (index < _queueSubject.value.length) {
       await _audioPlayer.seek(Duration.zero, index: index);
-      _currentMediaItemSubject.add(_queueSubject.value[index]);
+      _updateCurrentMediaItem(index);
     }
   }
 
@@ -196,152 +232,134 @@ class AudioPlayerService extends BaseAudioHandler {
     );
   }
 
-  PlaybackState _transformPlaybackEvent(PlaybackEvent event) {
-    return PlaybackState(
-      controls: [
-        MediaControl.skipToPrevious,
-        if (_audioPlayer.playing) MediaControl.pause else MediaControl.play,
-        MediaControl.skipToNext,
-      ],
-      systemActions: const {
-        MediaAction.seek,
-        MediaAction.seekForward,
-        MediaAction.seekBackward,
-      },
-      androidCompactActionIndices: const [0, 1, 2],
-      processingState: const {
-        ProcessingState.idle: AudioProcessingState.idle,
-        ProcessingState.loading: AudioProcessingState.loading,
-        ProcessingState.buffering: AudioProcessingState.buffering,
-        ProcessingState.ready: AudioProcessingState.ready,
-        ProcessingState.completed: AudioProcessingState.completed,
-      }[_audioPlayer.processingState]!,
-      playing: _audioPlayer.playing,
-      updatePosition: _audioPlayer.position,
-      bufferedPosition: _audioPlayer.bufferedPosition,
-      speed: _audioPlayer.speed,
-      queueIndex: _audioPlayer.currentIndex,
-    );
+  void _updatePlaybackState() {
+    final playerState = _audioPlayer.playerState;
+    final playing = playerState.playing;
+    final processingState = playerState.processingState;
+    
+    PlaybackState state;
+    
+    switch (processingState) {
+      case ProcessingState.idle:
+        state = PlaybackState(
+          controls: [MediaControl.play],
+          playing: false,
+          processingState: AudioProcessingState.idle,
+        );
+        break;
+      case ProcessingState.loading:
+        state = PlaybackState(
+          controls: [MediaControl.pause, MediaControl.stop],
+          playing: false,
+          processingState: AudioProcessingState.loading,
+        );
+        break;
+      case ProcessingState.buffering:
+        state = PlaybackState(
+          controls: [MediaControl.pause, MediaControl.stop],
+          playing: false,
+          processingState: AudioProcessingState.buffering,
+        );
+        break;
+      case ProcessingState.ready:
+        state = PlaybackState(
+          controls: [
+            MediaControl.skipToPrevious,
+            if (playing) MediaControl.pause else MediaControl.play,
+            MediaControl.stop,
+            MediaControl.skipToNext,
+          ],
+          playing: playing,
+          processingState: AudioProcessingState.ready,
+          updatePosition: _audioPlayer.position,
+        );
+        break;
+      case ProcessingState.completed:
+        state = PlaybackState(
+          controls: [MediaControl.play],
+          playing: false,
+          processingState: AudioProcessingState.completed,
+        );
+        break;
+    }
+    
+    _playbackStateSubject.add(state);
   }
 
-  void _onEpisodeCompleted() {
-    // 根據播放模式決定下一步行動
-    final currentIndex = _audioPlayer.currentIndex;
-    if (currentIndex != null) {
-      final nextIndex = _getNextIndex(currentIndex);
-      if (nextIndex != null) {
-        skipToNext();
-      } else {
-        // 播放清單結束
-        stop();
-      }
+  void _updateCurrentMediaItem(int index) {
+    final queue = _queueSubject.value;
+    if (index < queue.length) {
+      _currentMediaItemSubject.add(queue[index]);
     }
   }
 
   int? _getNextIndex(int currentIndex) {
     final queue = _queueSubject.value;
-    final mode = _playModeSubject.value;
+    final playMode = _playModeSubject.value;
     
-    switch (mode) {
+    switch (playMode) {
       case PlayMode.sequential:
-        return currentIndex < queue.length - 1 ? currentIndex + 1 : null;
-      case PlayMode.shuffle:
-        if (queue.length <= 1) return null;
-        int nextIndex;
-        do {
-          nextIndex = DateTime.now().millisecondsSinceEpoch % queue.length;
-        } while (nextIndex == currentIndex);
-        return nextIndex;
-      case PlayMode.repeat:
-        return currentIndex < queue.length - 1 ? currentIndex + 1 : 0;
+        return currentIndex + 1 < queue.length ? currentIndex + 1 : null;
+      case PlayMode.repeatAll:
+        return currentIndex + 1 < queue.length ? currentIndex + 1 : 0;
       case PlayMode.repeatOne:
         return currentIndex;
+      case PlayMode.shuffle:
+        // 實現隨機播放邏輯
+        final nextIndex = (currentIndex + 1) % queue.length;
+        return nextIndex;
     }
   }
 
   int? _getPreviousIndex(int currentIndex) {
     final queue = _queueSubject.value;
-    final mode = _playModeSubject.value;
+    final playMode = _playModeSubject.value;
     
-    switch (mode) {
+    switch (playMode) {
       case PlayMode.sequential:
         return currentIndex > 0 ? currentIndex - 1 : null;
-      case PlayMode.shuffle:
-        if (queue.length <= 1) return null;
-        int prevIndex;
-        do {
-          prevIndex = DateTime.now().millisecondsSinceEpoch % queue.length;
-        } while (prevIndex == currentIndex);
-        return prevIndex;
-      case PlayMode.repeat:
+      case PlayMode.repeatAll:
         return currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
       case PlayMode.repeatOne:
         return currentIndex;
+      case PlayMode.shuffle:
+        // 實現隨機播放邏輯
+        final prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
+        return prevIndex;
     }
   }
 
   Future<void> _updateShuffleMode() async {
-    final mode = _playModeSubject.value;
-    await _audioPlayer.setShuffleModeEnabled(mode == PlayMode.shuffle);
+    final playMode = _playModeSubject.value;
+    await _audioPlayer.setShuffleModeEnabled(playMode == PlayMode.shuffle);
   }
 
-  @override
-  Future<void> onTaskRemoved() async {
-    await stop();
-    await super.onTaskRemoved();
+  void _onEpisodeCompleted() {
+    final playMode = _playModeSubject.value;
+    
+    if (playMode == PlayMode.repeatOne) {
+      // 重複播放當前集數
+      seek(Duration.zero);
+      play();
+    } else {
+      // 播放下一集
+      skipToNext();
+    }
   }
 
-  void dispose() {
-    _audioPlayer.dispose();
-    _queueSubject.close();
-    _currentMediaItemSubject.close();
-    _playModeSubject.close();
+  Future<void> dispose() async {
+    await _audioPlayer.dispose();
+    await _playbackStateSubject.close();
+    await _queueSubject.close();
+    await _currentMediaItemSubject.close();
+    await _playModeSubject.close();
     _sleepTimer?.cancel();
   }
+}
 
-  /// 設置音量
-  Future<void> setVolume(double volume) async {
-    await _audioPlayer.setVolume(volume);
-  }
-
-  /// 獲取當前音量
-  Future<double> getVolume() async {
-    return _audioPlayer.volume;
-  }
-
-  Future<void> initialize() async {
-    if (_isInitialized) return;
-
-    final session = await AudioSession.instance;
-    await session.configure(const AudioSessionConfiguration(
-      avAudioSessionCategory: AVAudioSessionCategory.playback,
-      avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.duckOthers,
-      avAudioSessionMode: AVAudioSessionMode.defaultMode,
-      androidAudioAttributes: AndroidAudioAttributes(
-        contentType: AndroidAudioContentType.music,
-        usage: AndroidAudioUsage.media,
-      ),
-      androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
-      androidWillPauseWhenDucked: true,
-    ));
-
-    _isInitialized = true;
-  }
-
-  Future<void> setAudioSource(AudioSource source) async {
-    await initialize();
-    await _audioPlayer.setAudioSource(source);
-  }
-
-  @override
-  BehaviorSubject<List<MediaItem>> get queue => _queueSubject;
-  
-  @override
-  Stream<Duration> get positionStream => _audioPlayer.positionStream;
-  
-  @override
-  Stream<bool> get playingStream => _audioPlayer.playingStream;
-  
-  @override
-  Stream<ProcessingState> get processingStateStream => _audioPlayer.processingStateStream;
+enum PlayMode {
+  sequential,  // 順序播放
+  repeatAll,   // 重複播放列表
+  repeatOne,   // 重複播放單曲
+  shuffle,     // 隨機播放
 } 

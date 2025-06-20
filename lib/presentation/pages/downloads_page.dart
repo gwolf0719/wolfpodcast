@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../domain/entities/episode.dart';
+
 import '../bloc/download/download_bloc.dart';
-import 'downloading_page.dart';
+
 
 class DownloadsPage extends StatelessWidget {
   const DownloadsPage({Key? key}) : super(key: key);
@@ -86,11 +86,11 @@ class _DownloadedEpisodesTab extends StatelessWidget {
                       height: 60,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
-                        color: Theme.of(context).colorScheme.surfaceVariant,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         child: const Icon(Icons.podcasts, size: 32),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        color: Theme.of(context).colorScheme.surfaceVariant,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         child: const Icon(Icons.error, size: 32),
                       ),
                     ),

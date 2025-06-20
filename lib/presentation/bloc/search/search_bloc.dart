@@ -101,7 +101,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
   ) async {
     try {
       emit(SearchLoading());
-      final podcasts = await searchPodcasts(SearchPodcastsParams(query: event.query));
+      final podcasts = await searchPodcasts(event.query);
       emit(SearchResults(podcasts));
     } catch (e) {
       emit(SearchError(e.toString()));

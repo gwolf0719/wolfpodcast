@@ -56,7 +56,7 @@ class EpisodeRemoteDataSourceImpl implements EpisodeRemoteDataSource {
         episodeNumber: json['episodeNumber'],
         seasonNumber: json['seasonNumber'],
       );
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         return null;
       }

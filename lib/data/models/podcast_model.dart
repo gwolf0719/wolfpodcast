@@ -29,7 +29,22 @@ class PodcastModel extends HiveObject {
   @HiveField(7)
   final DateTime lastUpdated;
 
-  const PodcastModel({
+  @HiveField(8)
+  final String category;
+
+  @HiveField(9)
+  final String language;
+
+  @HiveField(10)
+  final bool isSubscribed;
+
+  @HiveField(11)
+  final DateTime? createdAt;
+
+  @HiveField(12)
+  final int episodeCount;
+
+  PodcastModel({
     required this.id,
     required this.title,
     required this.author,
@@ -38,6 +53,11 @@ class PodcastModel extends HiveObject {
     required this.feedUrl,
     required this.categories,
     required this.lastUpdated,
+    required this.category,
+    required this.language,
+    this.isSubscribed = false,
+    this.createdAt,
+    this.episodeCount = 0,
   });
 
   Podcast toEntity() {
@@ -48,12 +68,12 @@ class PodcastModel extends HiveObject {
       imageUrl: imageUrl,
       feedUrl: feedUrl,
       author: author,
-      category: '',
-      language: '',
-      isSubscribed: false,
-      createdAt: null,
+      category: category,
+      language: language,
+      isSubscribed: isSubscribed,
+      createdAt: createdAt,
       lastUpdate: lastUpdated,
-      episodeCount: 0,
+      episodeCount: episodeCount,
       categories: categories,
     );
   }
@@ -68,6 +88,11 @@ class PodcastModel extends HiveObject {
       feedUrl: podcast.feedUrl,
       categories: podcast.categories,
       lastUpdated: podcast.lastUpdate,
+      category: podcast.category,
+      language: podcast.language,
+      isSubscribed: podcast.isSubscribed,
+      createdAt: podcast.createdAt,
+      episodeCount: podcast.episodeCount,
     );
   }
 
@@ -81,6 +106,11 @@ class PodcastModel extends HiveObject {
       feedUrl: json['feedUrl'],
       categories: List<String>.from(json['categories'] ?? []),
       lastUpdated: DateTime.parse(json['lastUpdated']),
+      category: json['category'] ?? '',
+      language: json['language'] ?? '',
+      isSubscribed: json['isSubscribed'] ?? false,
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      episodeCount: json['episodeCount'] ?? 0,
     );
   }
 
@@ -94,6 +124,11 @@ class PodcastModel extends HiveObject {
       'feedUrl': feedUrl,
       'categories': categories,
       'lastUpdated': lastUpdated.toIso8601String(),
+      'category': category,
+      'language': language,
+      'isSubscribed': isSubscribed,
+      'createdAt': createdAt?.toIso8601String(),
+      'episodeCount': episodeCount,
     };
   }
 } 

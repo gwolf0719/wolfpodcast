@@ -69,7 +69,7 @@ class PodcastRemoteDataSourceImpl implements PodcastRemoteDataSource {
         episodeCount: json['episodeCount'] ?? 0,
         categories: List<String>.from(json['categories'] ?? []),
       );
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         return null;
       }

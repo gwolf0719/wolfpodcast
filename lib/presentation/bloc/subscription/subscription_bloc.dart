@@ -1,8 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../domain/entities/podcast.dart';
-import '../../../domain/usecases/subscribe_to_podcast.dart';
-import '../../../domain/usecases/get_subscribed_podcasts.dart';
+
 import '../../../domain/usecases/get_subscription_categories.dart';
 import '../../../domain/usecases/get_subscriptions_by_category.dart';
 import '../../../domain/usecases/update_podcast_categories.dart';
@@ -147,7 +146,7 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     required this.getAutoUpdateEnabled,
     required this.setAutoUpdate,
     required this.updateService,
-  }) : super(const SubscriptionInitial()) {
+  }) : super(SubscriptionInitialState()) {
     on<LoadSubscriptionCategoriesEvent>(_onLoadSubscriptionCategories);
     on<LoadSubscriptionsByCategoryEvent>(_onLoadSubscriptionsByCategory);
     on<UpdatePodcastCategoriesEvent>(_onUpdatePodcastCategories);
@@ -159,11 +158,11 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     try {
-      emit(const SubscriptionLoading());
+      emit(SubscriptionLoadingState());
       final categories = await getSubscriptionCategories();
       emit(SubscriptionCategoriesLoaded(categories));
     } catch (e) {
-      emit(SubscriptionError(e.toString()));
+      emit(SubscriptionErrorState(e.toString()));
     }
   }
 
@@ -172,11 +171,14 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     try {
-      emit(const SubscriptionLoading());
+      emit(SubscriptionLoadingState());
       final podcasts = await getSubscriptionsByCategory(event.category);
-      emit(SubscriptionsByCategoryLoaded(podcasts));
+      emit(SubscriptionsByCategoryLoaded(
+        category: event.category,
+        podcasts: podcasts,
+      ));
     } catch (e) {
-      emit(SubscriptionError(e.toString()));
+      emit(SubscriptionErrorState(e.toString()));
     }
   }
 
@@ -185,11 +187,11 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     try {
-      emit(const SubscriptionLoading());
+      emit(SubscriptionLoadingState());
       await updatePodcastCategories(event.podcastId, event.categories);
       add(LoadSubscriptionCategoriesEvent());
     } catch (e) {
-      emit(SubscriptionError(e.toString()));
+      emit(SubscriptionErrorState(e.toString()));
     }
   }
 
@@ -198,12 +200,12 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     try {
-      emit(const SubscriptionLoading());
+      emit(SubscriptionLoadingState());
       await setAutoUpdate(event.enabled);
       final isEnabled = await getAutoUpdateEnabled();
-      emit(AutoUpdateStatusChanged(isEnabled));
+      emit(AutoUpdateStatusLoaded(isEnabled));
     } catch (e) {
-      emit(SubscriptionError(e.toString()));
+      emit(SubscriptionErrorState(e.toString()));
     }
   }
 } 

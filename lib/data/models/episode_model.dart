@@ -22,6 +22,7 @@ class EpisodeModel extends Episode {
     Duration? position,
     int? episodeNumber,
     int? seasonNumber,
+    String? guid,
   }) : super(
           id: id,
           podcastId: podcastId,
@@ -39,6 +40,7 @@ class EpisodeModel extends Episode {
           position: position,
           episodeNumber: episodeNumber,
           seasonNumber: seasonNumber,
+          guid: guid,
         );
 
   factory EpisodeModel.fromJson(Map<String, dynamic> json) {
@@ -61,9 +63,11 @@ class EpisodeModel extends Episode {
           : null,
       episodeNumber: json['episodeNumber'] as int?,
       seasonNumber: json['seasonNumber'] as int?,
+      guid: json['guid'] as String?,
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -82,6 +86,7 @@ class EpisodeModel extends Episode {
       'position': position?.inSeconds,
       'episodeNumber': episodeNumber,
       'seasonNumber': seasonNumber,
+      'guid': guid,
     };
   }
 
@@ -103,6 +108,7 @@ class EpisodeModel extends Episode {
       position: episode.position,
       episodeNumber: episode.episodeNumber,
       seasonNumber: episode.seasonNumber,
+      guid: episode.guid,
     );
   }
 } 

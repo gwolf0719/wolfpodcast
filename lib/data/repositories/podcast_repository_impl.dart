@@ -73,10 +73,7 @@ class PodcastRepositoryImpl implements PodcastRepository {
     String? category,
   }) async {
     try {
-      final popularPodcasts = await remoteDataSource.getPopularPodcasts(
-        limit: limit,
-        category: category,
-      );
+      final popularPodcasts = await remoteDataSource.getPopularPodcasts(category ?? 'all');
       
       // 將熱門播客保存到本地緩存
       await localDataSource.cachePopularPodcasts(popularPodcasts);

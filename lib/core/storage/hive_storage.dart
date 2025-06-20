@@ -22,6 +22,11 @@ class HiveStorage {
     _playlistsBox = await Hive.openBox(AppConstants.playlistsBox);
     _episodesBox = await Hive.openBox(AppConstants.episodesBox);
   }
+
+  /// 開啟指定的 Box
+  Future<Box<T>> openBox<T>(String boxName) async {
+    return await Hive.openBox<T>(boxName);
+  }
   
   // =======================================
   // Settings 相關方法
@@ -193,49 +198,26 @@ class HiveStorage {
   Future<void> clearEpisodeCache() async {
     await _episodesBox.clear();
   }
+
+  // =======================================
+  // Subscription 相關方法  
+  // =======================================
+
+  /// 獲取訂閱分類
+  Future<List<String>> getSubscriptionCategories() async {
+    final categories = getSetting<List>('subscription_categories', defaultValue: <String>[]);
+    return categories?.cast<String>() ?? <String>[];
+  }
+
+  /// 獲取指定分類的訂閱
+  Future<List<dynamic>> getSubscriptionsByCategory(String category) async {
+    final subscriptions = getSetting<List>('subscriptions_$category', defaultValue: <dynamic>[]);
+    return subscriptions ?? <dynamic>[];
+  }
   
   // =======================================
   // 通用方法
   // =======================================
-  
-  /// 獲取所有設定
-  Map<String, dynamic> getAllSettings() {
-    return Map<String, dynamic>.from(_settingsBox.toMap());
-  }
-  
-  /// 匯出所有資料
-  Map<String, dynamic> exportAllData() {
-    return {
-      'settings': _settingsBox.toMap(),
-      'playlists': _playlistsBox.toMap(),
-      'episodes': _episodesBox.toMap(),
-    };
-  }
-  
-  /// 匯入資料
-  Future<void> importData(Map<String, dynamic> data) async {
-    if (data.containsKey('settings')) {
-      await _settingsBox.clear();
-      await _settingsBox.putAll(Map<String, dynamic>.from(data['settings']));
-    }
-    
-    if (data.containsKey('playlists')) {
-      await _playlistsBox.clear();
-      await _playlistsBox.putAll(Map<String, dynamic>.from(data['playlists']));
-    }
-    
-    if (data.containsKey('episodes')) {
-      await _episodesBox.clear();
-      await _episodesBox.putAll(Map<String, dynamic>.from(data['episodes']));
-    }
-  }
-  
-  /// 清空所有快取
-  Future<void> clearAllCache() async {
-    await _settingsBox.clear();
-    await _playlistsBox.clear();
-    await _episodesBox.clear();
-  }
   
   /// 關閉所有 Box
   Future<void> close() async {
@@ -244,139 +226,116 @@ class HiveStorage {
     await _episodesBox.close();
   }
   
-  /// 獲取快取大小統計
-  Map<String, int> getCacheStats() {
-    return {
-      'settings_count': _settingsBox.length,
-      'playlists_count': _playlistsBox.length,
-      'episodes_count': _episodesBox.length,
-    };
+  /// 清空所有快取
+  Future<void> clearAllCache() async {
+    await clearSettings();
+    await clearPlaylistCache();
+    await clearEpisodeCache();
   }
-
-  static const String _popularPodcastsBoxName = 'popular_podcasts';
-  static const String _popularPodcastsKey = 'popular_podcasts_list';
   
-  Future<void> setPopularPodcasts(List<PodcastModel> podcasts) async {
-    final box = await Hive.openBox<PodcastModel>(_popularPodcastsBoxName);
-    await box.clear();
-    await box.addAll(podcasts);
+  /// 獲取儲存大小
+  int getStorageSize() {
+    return _settingsBox.length + _playlistsBox.length + _episodesBox.length;
   }
 
-  Future<List<PodcastModel>> getPopularPodcasts() async {
-    final box = await Hive.openBox<PodcastModel>(_popularPodcastsBoxName);
-    return box.values.toList();
+  // 熱門播客快取鍵
+  static const String _popularPodcastsKey = 'popular_podcasts';
+
+  /// 緩存熱門播客
+  Future<void> cachePopularPodcasts(List<PodcastModel> podcasts) async {
+    final data = podcasts.map((p) => p.toJson()).toList();
+    await setSetting(_popularPodcastsKey, data);
   }
 
+  /// 獲取快取的熱門播客
+  Future<List<PodcastModel>> getCachedPopularPodcasts() async {
+    final data = getSetting<List>(_popularPodcastsKey, defaultValue: <dynamic>[]);
+    if (data == null) return <PodcastModel>[];
+    
+    return data.map((item) {
+      final map = Map<String, dynamic>.from(item);
+      return PodcastModel.fromJson(map);
+    }).toList();
+  }
+
+  /// 保存 Episode 到快取，帶 guid 支援
+  Future<void> saveEpisodeWithGuid(EpisodeModel episode) async {
+    final episodeData = {
+      'id': episode.id,
+      'podcastId': episode.podcastId,
+      'title': episode.title,
+      'description': episode.description,
+      'imageUrl': episode.imageUrl,
+      'audioUrl': episode.audioUrl,
+      'duration': episode.duration.inSeconds,
+      'publishDate': episode.publishDate.toIso8601String(),
+      'downloadPath': episode.downloadPath,
+      'isDownloaded': episode.isDownloaded,
+      'isDownloading': episode.isDownloading,
+      'downloadProgress': episode.downloadProgress,
+      'isPlayed': episode.isPlayed,
+      'position': episode.position?.inSeconds,
+      'episodeNumber': episode.episodeNumber,
+      'seasonNumber': episode.seasonNumber,
+      'guid': episode.guid,
+    };
+    
+    await cacheEpisode(episode.id, episodeData);
+  }
+
+  /// 從快取獲取 Episode，帶 guid 支援
+  EpisodeModel? getCachedEpisodeWithGuid(String episodeId) {
+    final data = getCachedEpisode(episodeId);
+    if (data == null) return null;
+
+    return EpisodeModel(
+      id: data['id'] as String,
+      podcastId: data['podcastId'] as String,
+      title: data['title'] as String,
+      description: data['description'] as String,
+      imageUrl: data['imageUrl'] as String,
+      audioUrl: data['audioUrl'] as String,
+      duration: Duration(seconds: data['duration'] as int),
+      publishDate: DateTime.parse(data['publishDate'] as String),
+      downloadPath: data['downloadPath'] as String?,
+      isDownloaded: data['isDownloaded'] as bool? ?? false,
+      isDownloading: data['isDownloading'] as bool? ?? false,
+      downloadProgress: data['downloadProgress'] as double? ?? 0.0,
+      isPlayed: data['isPlayed'] as bool? ?? false,
+      position: data['position'] != null
+          ? Duration(seconds: data['position'] as int)
+          : null,
+      episodeNumber: data['episodeNumber'] as int?,
+      seasonNumber: data['seasonNumber'] as int?,
+      guid: data['guid'] as String?,
+    );
+  }
+
+  // =======================================
+  // Podcast 相關方法
+  // =======================================
+
+  /// 更新播客信息
   Future<void> updatePodcast(PodcastModel podcast) async {
-    final box = await Hive.openBox<PodcastModel>('podcasts');
-    await box.put(podcast.id, podcast);
+    final podcastData = podcast.toJson();
+    await setSetting('podcast_${podcast.id}', podcastData);
   }
 
-  Future<PodcastModel?> getPodcast(String id) async {
-    final box = await Hive.openBox<PodcastModel>('podcasts');
-    return box.get(id);
+  /// 獲取熱門播客（簡化版本，返回快取的列表）
+  Future<List<PodcastModel>> getPopularPodcasts() async {
+    return await getCachedPopularPodcasts();
   }
 
-  static const String _settingsBoxName = 'settings';
-  static const String _autoUpdateKey = 'auto_update_enabled';
-
+  /// 設置自動更新啟用狀態
   Future<void> setAutoUpdateEnabled(bool enabled) async {
-    final box = await Hive.openBox(_settingsBoxName);
-    await box.put(_autoUpdateKey, enabled);
+    await setSetting('auto_update_enabled', enabled);
   }
 
+  /// 獲取自動更新啟用狀態
   Future<bool> getAutoUpdateEnabled() async {
-    final box = await Hive.openBox(_settingsBoxName);
-    return box.get(_autoUpdateKey, defaultValue: false);
+    return getSetting<bool>('auto_update_enabled', defaultValue: false) ?? false;
   }
 
-  Future<void> saveEpisode(EpisodeModel episode) async {
-    final box = await Hive.openBox<EpisodeModel>('episodes');
-    await box.put(episode.id, episode);
-  }
-
-  Future<EpisodeModel?> getEpisode(String id) async {
-    final box = await Hive.openBox<EpisodeModel>('episodes');
-    return box.get(id);
-  }
-
-  Future<List<EpisodeModel>> getEpisodesByPodcast(String podcastId) async {
-    final box = await Hive.openBox<EpisodeModel>('episodes');
-    return box.values.where((episode) => episode.podcastId == podcastId).toList();
-  }
-
-  Future<void> updateEpisodePlaybackPosition(String episodeId, Duration position) async {
-    final box = await Hive.openBox<EpisodeModel>('episodes');
-    final episode = box.get(episodeId);
-    if (episode != null) {
-      final updatedEpisode = EpisodeModel(
-        id: episode.id,
-        title: episode.title,
-        description: episode.description,
-        audioUrl: episode.audioUrl,
-        imageUrl: episode.imageUrl,
-        duration: episode.duration,
-        publishDate: episode.publishDate,
-        podcastId: episode.podcastId,
-        guid: episode.guid,
-        isPlayed: episode.isPlayed,
-        position: position,
-        downloadPath: episode.downloadPath,
-        isDownloaded: episode.isDownloaded,
-        episodeNumber: episode.episodeNumber,
-        seasonNumber: episode.seasonNumber,
-      );
-      await box.put(episodeId, updatedEpisode);
-    }
-  }
-
-  Future<void> markEpisodeAsPlayed(String episodeId) async {
-    final box = await Hive.openBox<EpisodeModel>('episodes');
-    final episode = box.get(episodeId);
-    if (episode != null) {
-      final updatedEpisode = EpisodeModel(
-        id: episode.id,
-        title: episode.title,
-        description: episode.description,
-        audioUrl: episode.audioUrl,
-        imageUrl: episode.imageUrl,
-        duration: episode.duration,
-        publishDate: episode.publishDate,
-        podcastId: episode.podcastId,
-        guid: episode.guid,
-        isPlayed: true,
-        position: episode.position,
-        downloadPath: episode.downloadPath,
-        isDownloaded: episode.isDownloaded,
-        episodeNumber: episode.episodeNumber,
-        seasonNumber: episode.seasonNumber,
-      );
-      await box.put(episodeId, updatedEpisode);
-    }
-  }
-
-  Future<void> updateEpisodeDownloadStatus(String episodeId, String downloadPath) async {
-    final box = await Hive.openBox<EpisodeModel>('episodes');
-    final episode = box.get(episodeId);
-    if (episode != null) {
-      final updatedEpisode = EpisodeModel(
-        id: episode.id,
-        title: episode.title,
-        description: episode.description,
-        audioUrl: episode.audioUrl,
-        imageUrl: episode.imageUrl,
-        duration: episode.duration,
-        publishDate: episode.publishDate,
-        podcastId: episode.podcastId,
-        guid: episode.guid,
-        isPlayed: episode.isPlayed,
-        position: episode.position,
-        downloadPath: downloadPath,
-        isDownloaded: true,
-        episodeNumber: episode.episodeNumber,
-        seasonNumber: episode.seasonNumber,
-      );
-      await box.put(episodeId, updatedEpisode);
-    }
-  }
+  /// 獲取 episodes box 的訪問器
+  Box get episodeBox => _episodesBox;
 } 

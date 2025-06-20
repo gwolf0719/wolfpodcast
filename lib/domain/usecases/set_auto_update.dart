@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../repositories/podcast_repository.dart';
+import '../repositories/subscription_repository.dart';
 
 class SetAutoUpdateParams extends Equatable {
   final bool enabled;
@@ -11,11 +11,11 @@ class SetAutoUpdateParams extends Equatable {
 }
 
 class SetAutoUpdate {
-  final PodcastRepository _repository;
+  final SubscriptionRepository _repository;
 
   SetAutoUpdate(this._repository);
 
-  Future<void> call(SetAutoUpdateParams params) async {
-    await _repository.setAutoUpdate(params.enabled);
+  Future<void> call(bool enabled) async {
+    await _repository.setAutoUpdate(enabled);
   }
 } 

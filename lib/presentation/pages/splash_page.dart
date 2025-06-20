@@ -149,7 +149,7 @@ class _SplashPageState extends State<SplashPage>
                           color: AppTheme.playerAccent,
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.playerAccent.withOpacity(0.3),
+                              color: AppTheme.playerAccent.withValues(alpha: 0.3),
                               blurRadius: 20,
                               spreadRadius: 5,
                             ),

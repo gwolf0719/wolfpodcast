@@ -3,6 +3,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../domain/entities/episode.dart';
 import '../../../domain/repositories/player_repository.dart';
+import '../../../domain/repositories/episode_repository.dart';
 
 // Events
 abstract class PlayerEvent extends Equatable {
@@ -28,6 +29,8 @@ class PlayerState extends Equatable {
   final double volume;
   final bool isMuted;
   final Duration? sleepTimer;
+  final Duration? sleepTimerRemaining;
+  final double playbackSpeed;
   final String? error;
   final bool isPlaying;
 
@@ -39,6 +42,8 @@ class PlayerState extends Equatable {
     this.volume = 1.0,
     this.isMuted = false,
     this.sleepTimer,
+    this.sleepTimerRemaining,
+    this.playbackSpeed = 1.0,
     this.error,
     this.isPlaying = false,
   });
@@ -51,6 +56,8 @@ class PlayerState extends Equatable {
     double? volume,
     bool? isMuted,
     Duration? sleepTimer,
+    Duration? sleepTimerRemaining,
+    double? playbackSpeed,
     String? error,
     bool? isPlaying,
   }) {
@@ -62,6 +69,8 @@ class PlayerState extends Equatable {
       volume: volume ?? this.volume,
       isMuted: isMuted ?? this.isMuted,
       sleepTimer: sleepTimer ?? this.sleepTimer,
+      sleepTimerRemaining: sleepTimerRemaining ?? this.sleepTimerRemaining,
+      playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       error: error,
       isPlaying: isPlaying ?? this.isPlaying,
     );
@@ -76,6 +85,8 @@ class PlayerState extends Equatable {
     volume,
     isMuted,
     sleepTimer,
+    sleepTimerRemaining,
+    playbackSpeed,
     error,
     isPlaying,
   ];
@@ -225,7 +236,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   final EpisodeRepository episodeRepository;
   Timer? _sleepTimer;
   StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<bool>? _playbackStateSubscription;
+  StreamSubscription<dynamic>? _playbackStateSubscription;
 
   PlayerBloc({
     required this.playerRepository,
@@ -249,7 +260,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     });
 
     // Listen to playback state changes
-    _playbackStateSubscription = playerRepository.playbackStateStream.listen((isPlaying) {
+    _playbackStateSubscription = playerRepository.playbackStateStream.listen((state) {
+      final isPlaying = state is bool ? state : false;
       if (isPlaying) {
         add(ResumePlaybackEvent());
       } else {

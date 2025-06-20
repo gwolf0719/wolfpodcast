@@ -16,4 +16,5 @@ abstract class EpisodeRepository {
   Future<bool> isEpisodeDownloaded(String episodeId);
   Stream<double> getDownloadProgress(String episodeId);
   Future<List<Episode>> getDownloadedEpisodes();
+  Future<void> updateEpisode(Episode episode);
 } 

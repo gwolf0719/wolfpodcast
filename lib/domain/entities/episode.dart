@@ -24,6 +24,7 @@ class Episode extends Equatable {
   final Duration? position;
   final int? episodeNumber;
   final int? seasonNumber;
+  final String? guid;
 
   const Episode({
     required this.id,
@@ -42,6 +43,7 @@ class Episode extends Equatable {
     this.position,
     this.episodeNumber,
     this.seasonNumber,
+    this.guid,
   });
 
   @override
@@ -62,6 +64,7 @@ class Episode extends Equatable {
     position,
     episodeNumber,
     seasonNumber,
+    guid,
   ];
 
   Episode copyWith({
@@ -81,6 +84,7 @@ class Episode extends Equatable {
     Duration? position,
     int? episodeNumber,
     int? seasonNumber,
+    String? guid,
   }) {
     return Episode(
       id: id ?? this.id,
@@ -99,13 +103,15 @@ class Episode extends Equatable {
       position: position ?? this.position,
       episodeNumber: episodeNumber ?? this.episodeNumber,
       seasonNumber: seasonNumber ?? this.seasonNumber,
+      guid: guid ?? this.guid,
     );
   }
 
   // 計算播放進度百分比
   double get progressPercent {
     if (duration == Duration.zero) return 0.0;
-    return position?.inMilliseconds?.toDouble() ?? 0.0 / duration.inMilliseconds;
+    final currentPosition = position?.inMilliseconds.toDouble() ?? 0.0;
+    return currentPosition / duration.inMilliseconds;
   }
 
   // 是否正在播放
@@ -159,6 +165,7 @@ class Episode extends Equatable {
       'position': position?.inSeconds,
       'episodeNumber': episodeNumber,
       'seasonNumber': seasonNumber,
+      'guid': guid,
     };
   }
 
@@ -182,6 +189,7 @@ class Episode extends Equatable {
           : null,
       episodeNumber: json['episodeNumber'] as int?,
       seasonNumber: json['seasonNumber'] as int?,
+      guid: json['guid'] as String?,
     );
   }
 
@@ -196,6 +204,26 @@ class Episode extends Equatable {
       duration: Duration.zero,
       publishDate: DateTime.now(),
     );
+  }
+
+  // Utility methods for episode status
+  EpisodePlayStatus get playStatus {
+    if (isPlayed) {
+      return EpisodePlayStatus.completed;
+    } else if (position != null && position!.inSeconds > 0) {
+      return EpisodePlayStatus.paused;
+    } else {
+      return EpisodePlayStatus.notPlayed;
+    }
+  }
+
+  bool get hasBeenStarted => position != null && position!.inSeconds > 0;
+  
+  bool get isCompleted => progressPercent >= 0.95; // 95% считается завершенным
+  
+  Duration get remainingTime {
+    if (position == null) return duration;
+    return duration - position!;
   }
 
   @override

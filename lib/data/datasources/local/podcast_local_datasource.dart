@@ -150,7 +150,16 @@ class PodcastLocalDataSourceImpl implements PodcastLocalDataSource {
   @override
   Future<void> cachePopularPodcasts(List<Podcast> podcasts) async {
     for (final podcast in podcasts) {
-      await _storage.updatePodcast(PodcastModel.fromEntity(podcast));
+      // Convert podcast to map format for storage
+    final podcastMap = {
+      'id': podcast.id,
+      'title': podcast.title,
+      'description': podcast.description,
+      'imageUrl': podcast.imageUrl,
+      'author': podcast.author,
+      'feedUrl': podcast.feedUrl,
+    };
+    await _storage.setSetting('podcast_${podcast.id}', podcastMap);
     }
   }
 

@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'package:workmanager/workmanager.dart';
-import '../repositories/podcast_repository.dart';
-import '../repositories/subscription_repository.dart';
+import '../../domain/repositories/podcast_repository.dart';
+import '../../domain/repositories/subscription_repository.dart';
 import '../../domain/entities/podcast.dart';
 
 const podcastUpdateTask = 'podcast_update_task';
 
 class PodcastUpdateService {
+  // ignore: unused_field
   final PodcastRepository _podcastRepository;
+  // ignore: unused_field
   final SubscriptionRepository _subscriptionRepository;
   
   PodcastUpdateService(this._podcastRepository, this._subscriptionRepository);
@@ -50,6 +52,7 @@ class PodcastUpdateService {
           await _sendUpdateNotification(updatedPodcast);
         }
       } catch (e) {
+        // ignore: avoid_print
         print('更新播客失敗：${podcast.title} - $e');
       }
     }

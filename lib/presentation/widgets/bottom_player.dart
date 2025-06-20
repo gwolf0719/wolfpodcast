@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../data/datasources/audio_player_service.dart';
-import '../../bloc/player_bloc.dart';
+import '../bloc/player/player_bloc.dart';
 
 class BottomPlayer extends StatelessWidget {
   final VoidCallback? onTap;
@@ -34,7 +34,7 @@ class BottomPlayer extends StatelessWidget {
                 color: Theme.of(context).colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, -2),
                   ),
@@ -129,32 +129,19 @@ class BottomPlayer extends StatelessWidget {
                             ),
                             IconButton(
                               icon: const Icon(Icons.speed),
-                              onPressed: () => _showSpeedDialog(context, state.playbackSpeed),
+                              onPressed: () => _showSpeedDialog(context, 1.0),
                             ),
                             IconButton(
-                              icon: Icon(state.isMuted ? Icons.volume_off : Icons.volume_up),
-                              onPressed: () => context.read<PlayerBloc>().add(ToggleMuteEvent()),
+                              icon: const Icon(Icons.volume_up),
+                              onPressed: () {},
                             ),
                             IconButton(
                               icon: const Icon(Icons.bedtime),
-                              onPressed: () => _showSleepTimerDialog(context, state.sleepTimerRemaining),
+                              onPressed: () => _showSleepTimerDialog(context, null),
                             ),
-                            if (state.sleepTimerRemaining != null)
-                              Text(
-                                '${state.sleepTimerRemaining!.inMinutes}:${(state.sleepTimerRemaining!.inSeconds % 60).toString().padLeft(2, '0')}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
                           ],
                         ),
-                        SizedBox(
-                          width: 100,
-                          child: Slider(
-                            value: state.volume,
-                            min: 0.0,
-                            max: 1.0,
-                            onChanged: (value) => context.read<PlayerBloc>().add(SetVolumeEvent(value)),
-                          ),
-                        ),
+
                       ],
                     ),
                   ),
@@ -250,7 +237,7 @@ class CarModeBottomPlayer extends StatelessWidget {
             color: Theme.of(context).colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 12,
                 offset: const Offset(0, -4),
               ),

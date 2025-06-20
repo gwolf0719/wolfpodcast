@@ -17,6 +17,7 @@ import '../data/datasources/local/episode_local_datasource.dart';
 import '../data/datasources/remote/podcast_remote_datasource.dart';
 import '../data/datasources/remote/episode_remote_datasource.dart';
 import '../data/datasources/download_manager.dart';
+import '../data/datasources/podcast_update_service.dart';
 
 // Repositories
 import '../data/repositories/subscription_repository.dart';
@@ -28,6 +29,7 @@ import '../data/repositories/player_repository_impl.dart';
 import '../domain/repositories/podcast_repository.dart';
 import '../domain/repositories/episode_repository.dart';
 import '../domain/repositories/player_repository.dart';
+import '../domain/repositories/subscription_repository.dart';
 
 // Use Cases
 import '../domain/usecases/search_podcasts.dart';
@@ -40,6 +42,9 @@ import '../domain/usecases/seek_to_position.dart';
 import '../domain/usecases/get_popular_podcasts.dart';
 import '../domain/usecases/get_subscription_categories.dart';
 import '../domain/usecases/get_subscriptions_by_category.dart';
+import '../domain/usecases/get_auto_update_enabled.dart';
+import '../domain/usecases/set_auto_update.dart';
+import '../domain/usecases/update_podcast_categories.dart';
 
 // BLoCs
 import '../presentation/bloc/search/search_bloc.dart';
@@ -60,6 +65,7 @@ Future<void> init() async {
   
   // Hive Storage
   final hiveStorage = HiveStorage.instance;
+  await hiveStorage.init();
   getIt.registerLazySingleton<HiveStorage>(() => hiveStorage);
   
   // HTTP Client
@@ -88,6 +94,11 @@ Future<void> init() async {
   // Download Manager
   getIt.registerLazySingleton<DownloadManager>(
     () => DownloadManager(dio: getIt()),
+  );
+  
+  // Podcast Update Service
+  getIt.registerLazySingleton<PodcastUpdateService>(
+    () => PodcastUpdateService(getIt(), getIt()),
   );
   
   // Local Data Sources
@@ -136,8 +147,8 @@ Future<void> init() async {
     ),
   );
   
-  // Subscription Repository (Singleton)
-  getIt.registerLazySingleton<SubscriptionRepositoryImpl>(
+  // Subscription Repository
+  getIt.registerLazySingleton<SubscriptionRepository>(
     () => SubscriptionRepositoryImpl(getIt()),
   );
   
@@ -152,6 +163,9 @@ Future<void> init() async {
   getIt.registerLazySingleton(() => GetPopularPodcasts(getIt()));
   getIt.registerLazySingleton(() => GetSubscriptionCategories(getIt()));
   getIt.registerLazySingleton(() => GetSubscriptionsByCategory(getIt()));
+  getIt.registerLazySingleton(() => GetAutoUpdateEnabled(getIt()));
+  getIt.registerLazySingleton(() => SetAutoUpdate(getIt()));
+  getIt.registerLazySingleton(() => UpdatePodcastCategories(getIt()));
   
   // Episode Use Cases
   getIt.registerLazySingleton(() => GetEpisodes(getIt()));

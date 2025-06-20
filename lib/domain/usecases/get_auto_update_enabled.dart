@@ -1,7 +1,7 @@
-import '../repositories/podcast_repository.dart';
+import '../repositories/subscription_repository.dart';
 
 class GetAutoUpdateEnabled {
-  final PodcastRepository _repository;
+  final SubscriptionRepository _repository;
 
   GetAutoUpdateEnabled(this._repository);
 

@@ -8,7 +8,7 @@ part of 'podcast_model.dart';
 
 class PodcastModelAdapter extends TypeAdapter<PodcastModel> {
   @override
-  final int typeId = 0;
+  final int typeId = 2;
 
   @override
   PodcastModel read(BinaryReader reader) {
@@ -23,31 +23,42 @@ class PodcastModelAdapter extends TypeAdapter<PodcastModel> {
       description: fields[3] as String,
       imageUrl: fields[4] as String,
       feedUrl: fields[5] as String,
-      categories: (fields[6] as List).cast<String>(),
+      categories: (fields[6] as List?)?.cast<String>() ?? [],
       lastUpdated: fields[7] as DateTime,
+      category: fields[8] as String,
+      language: fields[9] as String,
+      isSubscribed: fields[10] as bool? ?? false,
+      createdAt: fields[11] as DateTime?,
+      episodeCount: fields[12] as int? ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, PodcastModel obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.title)
       ..writeByte(2)
-      ..write(obj.author)
-      ..writeByte(3)
       ..write(obj.description)
-      ..writeByte(4)
+      ..writeByte(3)
       ..write(obj.imageUrl)
+      ..writeByte(4)
+      ..write(obj.author)
       ..writeByte(5)
       ..write(obj.feedUrl)
       ..writeByte(6)
-      ..write(obj.categories)
+      ..write(obj.category)
       ..writeByte(7)
-      ..write(obj.lastUpdated);
+      ..write(obj.language)
+      ..writeByte(8)
+      ..write(obj.isSubscribed)
+      ..writeByte(9)
+      ..write(obj.createdAt)
+      ..writeByte(10)
+      ..write(obj.episodeCount);
   }
 
   @override
@@ -59,4 +70,4 @@ class PodcastModelAdapter extends TypeAdapter<PodcastModel> {
       other is PodcastModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
-}
+} 

@@ -7,6 +7,7 @@ class GetSubscriptionsByCategory {
   GetSubscriptionsByCategory(this.repository);
 
   Future<List<Podcast>> call(String category) async {
-    return await repository.getSubscriptionsByCategory(category);
+    final subscriptions = await repository.getSubscriptionsByCategory(category);
+    return subscriptions.cast<Podcast>();
   }
 } 

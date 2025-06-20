@@ -19,10 +19,7 @@ class UpdatePodcastCategories {
 
   UpdatePodcastCategories(this._repository);
 
-  Future<void> call(UpdatePodcastCategoriesParams params) async {
-    await _repository.updatePodcastCategories(
-      params.podcastId,
-      params.categories,
-    );
+  Future<void> call(String podcastId, List<String> categories) async {
+    await _repository.updatePodcastCategories(podcastId, categories);
   }
 } 

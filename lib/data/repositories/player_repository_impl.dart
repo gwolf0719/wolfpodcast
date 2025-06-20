@@ -33,11 +33,12 @@ class PlayerRepositoryImpl implements PlayerRepository {
   @override
   Future<void> playEpisode(Episode episode) async {
     try {
+      // ignore: unused_local_variable
       final audioSource = episode.downloadPath != null
           ? AudioSource.uri(Uri.file(episode.downloadPath!))
           : AudioSource.uri(Uri.parse(episode.audioUrl));
-      await _audioPlayerService.setAudioSource(audioSource);
-      await _audioPlayerService.play();
+      await _audioPlayerService.playEpisode(episode);
+      // Note: playEpisode already handles setAudioSource internally
       
       // 保存最後播放的節目
       await hiveStorage.setLastPlayed({
@@ -97,6 +98,12 @@ class PlayerRepositoryImpl implements PlayerRepository {
 
   @override
   Stream<bool> get isPlaying => _audioPlayerService.playingStream;
+
+  @override
+  Stream<Duration> get positionStream => _audioPlayerService.positionStream;
+
+  @override
+  Stream<dynamic> get playbackStateStream => _audioPlayerService.playbackState.stream;
 
   @override
   Future<void> setVolume(double volume) async {

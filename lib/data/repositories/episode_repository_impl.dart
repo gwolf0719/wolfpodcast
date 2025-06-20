@@ -1,17 +1,17 @@
 import 'dart:async';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/storage/hive_storage.dart';
 import '../../domain/entities/episode.dart';
 import '../../domain/repositories/episode_repository.dart';
 import '../datasources/local/episode_local_datasource.dart';
 import '../datasources/remote/episode_remote_datasource.dart';
 import '../datasources/download_manager.dart';
-import 'package:dio/dio.dart';
+
 
 class EpisodeRepositoryImpl implements EpisodeRepository {
   final EpisodeLocalDataSource _localDataSource;
   final EpisodeRemoteDataSource _remoteDataSource;
   final DownloadManager _downloadManager;
+  // ignore: unused_field
   final HiveStorage _hiveStorage;
   final Map<String, StreamController<double>> _progressControllers = {};
 
@@ -232,6 +232,15 @@ class EpisodeRepositoryImpl implements EpisodeRepository {
   @override
   Future<List<Episode>> getDownloadedEpisodes() async {
     return await _localDataSource.getDownloadedEpisodes();
+  }
+
+  @override
+  Future<void> updateEpisode(Episode episode) async {
+    try {
+      await _localDataSource.saveEpisode(episode);
+    } catch (e) {
+      throw Exception('Failed to update episode: $e');
+    }
   }
 
   void dispose() {

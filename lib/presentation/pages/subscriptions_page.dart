@@ -4,11 +4,13 @@ import '../bloc/subscription/subscription_bloc.dart';
 import '../widgets/podcast_list.dart';
 
 class SubscriptionsPage extends StatefulWidget {
+  const SubscriptionsPage({Key? key}) : super(key: key);
+
   @override
-  _SubscriptionsPageState createState() => _SubscriptionsPageState();
+  SubscriptionsPageState createState() => SubscriptionsPageState();
 }
 
-class _SubscriptionsPageState extends State<SubscriptionsPage> {
+class SubscriptionsPageState extends State<SubscriptionsPage> {
   @override
   void initState() {
     super.initState();
@@ -87,9 +89,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       ),
       body: BlocBuilder<SubscriptionBloc, SubscriptionState>(
         builder: (context, state) {
-          if (state is SubscriptionLoading) {
+          if (state is SubscriptionLoadingState) {
             return const Center(child: CircularProgressIndicator());
-          } else if (state is SubscriptionError) {
+          } else if (state is SubscriptionErrorState) {
             return Center(child: Text(state.message));
           } else if (state is SubscriptionCategoriesLoaded) {
             return ListView(
@@ -139,9 +141,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 ),
               ],
             );
-          } else if (state is SubscriptionsLoaded) {
+          } else if (state is SubscriptionLoadedState) {
             return PodcastList(
-              podcasts: state.podcasts,
+              podcasts: state.subscriptions,
               onCategoryEdit: (podcast) => _showCategoryDialog(
                 context,
                 podcast.id,

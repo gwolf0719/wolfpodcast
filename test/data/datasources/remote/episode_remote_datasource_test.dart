@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:wolfpodcast/data/datasources/remote/episode_remote_datasource.dart';
+import '../../../../lib/data/datasources/remote/episode_remote_datasource.dart';
 
 import 'episode_remote_datasource_test.mocks.dart';
 

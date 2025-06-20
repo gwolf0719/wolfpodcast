@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:hive/hive.dart';
-import 'package:wolfpodcast/core/storage/hive_storage.dart';
-import 'package:wolfpodcast/data/datasources/local/episode_local_datasource.dart';
-import 'package:wolfpodcast/domain/entities/episode.dart';
+import '../../../../lib/core/storage/hive_storage.dart';
+import '../../../../lib/data/datasources/local/episode_local_datasource.dart';
+import '../../../../lib/domain/entities/episode.dart';
 
 import 'episode_local_datasource_test.mocks.dart';
 

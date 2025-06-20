@@ -8,8 +8,7 @@ import '../../domain/entities/podcast.dart';
 import '../widgets/bottom_navigation.dart';
 import 'search_page.dart';
 import 'downloads_page.dart';
-import 'subscriptions_page.dart';
-import 'settings_page.dart';
+
 
 final getIt = GetIt.instance;
 
@@ -29,6 +28,7 @@ class _HomePageState extends State<HomePage> {
     const SettingsPage(),
   ];
 
+  // ignore: unused_field
   final SubscriptionRepositoryImpl _subscriptionRepo = getIt<SubscriptionRepositoryImpl>();
 
   @override
@@ -118,7 +118,7 @@ class DiscoverPage extends StatelessWidget {
                   Text(
                     '探索全球優質 Podcast 內容',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -514,14 +514,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         errorBuilder: (context, error, stackTrace) => Container(
                           width: 80,
                           height: 80,
-                          color: Theme.of(context).colorScheme.surfaceVariant,
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
                           child: const Icon(Icons.podcasts, size: 40),
                         ),
                       )
                     : Container(
                         width: 80,
                         height: 80,
-                        color: Theme.of(context).colorScheme.surfaceVariant,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         child: const Icon(Icons.podcasts, size: 40),
                       ),
               ),
