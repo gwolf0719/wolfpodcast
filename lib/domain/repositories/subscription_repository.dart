@@ -1,7 +1,20 @@
 import '../entities/podcast.dart';
 
 abstract class SubscriptionRepository {
-  // ... existing code ...
+  /// 初始化 repository
+  Future<void> initialize();
+
+  /// 訂閱 Podcast
+  Future<void> subscribePodcast(Podcast podcast);
+
+  /// 取消訂閱 Podcast
+  Future<void> unsubscribePodcast(String podcastId);
+
+  /// 檢查是否已訂閱
+  Future<bool> isSubscribed(String podcastId);
+
+  /// 獲取所有訂閱的 Podcast
+  Future<List<Podcast>> getSubscribedPodcasts();
 
   /// 獲取所有訂閱的分類
   Future<List<String>> getSubscriptionCategories();
@@ -12,7 +25,9 @@ abstract class SubscriptionRepository {
   /// 更新播客的分類
   Future<void> updatePodcastCategories(String podcastId, List<String> categories);
 
+  /// 獲取自動更新設定
   Future<bool> getAutoUpdateEnabled();
+  
+  /// 設定自動更新
   Future<void> setAutoUpdate(bool enabled);
-  Future<List<Podcast>> getSubscribedPodcasts();
 } 

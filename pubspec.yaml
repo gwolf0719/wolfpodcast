@@ -77,7 +77,7 @@ dependencies:
   # Car Play Support
   android_intent_plus: ^4.0.3
   
-  # Background Tasks
+  # Background Tasks (暫時移除因為版本相容性問題)
   # workmanager: ^0.5.2
 
 dev_dependencies:

@@ -7,6 +7,7 @@ import '../../../domain/usecases/get_subscriptions_by_category.dart';
 import '../../../domain/usecases/update_podcast_categories.dart';
 import '../../../domain/usecases/set_auto_update.dart';
 import '../../../domain/usecases/get_auto_update_enabled.dart';
+import '../../../domain/usecases/get_subscribed_podcasts.dart';
 import '../../../domain/services/podcast_update_service.dart';
 
 // Events
@@ -132,6 +133,7 @@ class AutoUpdateStatusLoaded extends SubscriptionState {
 
 // BLoC
 class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
+  final GetSubscribedPodcasts getSubscribedPodcasts;
   final GetSubscriptionCategories getSubscriptionCategories;
   final GetSubscriptionsByCategory getSubscriptionsByCategory;
   final UpdatePodcastCategories updatePodcastCategories;
@@ -140,6 +142,7 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
   final PodcastUpdateService updateService;
 
   SubscriptionBloc({
+    required this.getSubscribedPodcasts,
     required this.getSubscriptionCategories,
     required this.getSubscriptionsByCategory,
     required this.updatePodcastCategories,
@@ -147,10 +150,24 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     required this.setAutoUpdate,
     required this.updateService,
   }) : super(SubscriptionInitialState()) {
+    on<LoadSubscriptionsEvent>(_onLoadSubscriptions);
     on<LoadSubscriptionCategoriesEvent>(_onLoadSubscriptionCategories);
     on<LoadSubscriptionsByCategoryEvent>(_onLoadSubscriptionsByCategory);
     on<UpdatePodcastCategoriesEvent>(_onUpdatePodcastCategories);
     on<ToggleAutoUpdateEvent>(_onToggleAutoUpdate);
+  }
+
+  Future<void> _onLoadSubscriptions(
+    LoadSubscriptionsEvent event,
+    Emitter<SubscriptionState> emit,
+  ) async {
+    try {
+      emit(SubscriptionLoadingState());
+      final subscriptions = await getSubscribedPodcasts();
+      emit(SubscriptionLoadedState(subscriptions));
+    } catch (e) {
+      emit(SubscriptionErrorState(e.toString()));
+    }
   }
 
   Future<void> _onLoadSubscriptionCategories(

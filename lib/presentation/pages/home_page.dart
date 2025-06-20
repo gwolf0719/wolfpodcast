@@ -3,11 +3,14 @@ import 'package:get_it/get_it.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
-import '../../data/repositories/subscription_repository.dart';
+import '../../domain/repositories/subscription_repository.dart';
 import '../../domain/entities/podcast.dart';
 import '../widgets/bottom_navigation.dart';
 import 'search_page.dart';
 import 'downloads_page.dart';
+import 'settings_page.dart';
+import 'categories_page.dart';
+import 'simple_podcast_detail_page.dart';
 
 
 final getIt = GetIt.instance;
@@ -23,13 +26,15 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
+    const DiscoverPage(),
     const SearchPage(),
+    const SubscriptionsPage(),
     const DownloadsPage(),
     const SettingsPage(),
   ];
 
   // ignore: unused_field
-  final SubscriptionRepositoryImpl _subscriptionRepo = getIt<SubscriptionRepositoryImpl>();
+  final SubscriptionRepository _subscriptionRepo = getIt<SubscriptionRepository>();
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +185,11 @@ class DiscoverPage extends StatelessWidget {
                   title: '分類瀏覽',
                   description: '按主題尋找感興趣的內容',
                   onTap: () {
-                    // TODO: 導航到分類頁面
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CategoriesPage(),
+                      ),
+                    );
                   },
                 ),
                 _buildFeatureCard(
@@ -331,7 +340,7 @@ class SubscriptionsPage extends StatefulWidget {
 }
 
 class _SubscriptionsPageState extends State<SubscriptionsPage> {
-  final SubscriptionRepositoryImpl _subscriptionRepo = getIt<SubscriptionRepositoryImpl>();
+  final SubscriptionRepository _subscriptionRepo = getIt<SubscriptionRepository>();
   List<Podcast> _subscribedPodcasts = [];
   bool _isLoading = true;
   String _errorMessage = '';
@@ -609,21 +618,17 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   }
 
   void _onPodcastTap(Podcast podcast) {
-    // TODO: 導航到 Podcast 詳情頁面
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('選擇了：${podcast.title}'),
-        duration: const Duration(seconds: 2),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SimplePodcastDetailPage(podcast: podcast),
       ),
     );
   }
 
   void _onViewEpisodes(Podcast podcast) {
-    // TODO: 導航到集數清單頁面
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('查看 ${podcast.title} 的集數'),
-        duration: const Duration(seconds: 2),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SimplePodcastDetailPage(podcast: podcast),
       ),
     );
   }

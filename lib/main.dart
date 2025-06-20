@@ -8,10 +8,7 @@ import 'presentation/pages/home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 初始化 Hive
-  await Hive.initFlutter();
-  
-  // 初始化依賴注入
+  // 初始化依賴注入 (包含 Hive 初始化)
   await di.init();
 
   runApp(const MyApp());

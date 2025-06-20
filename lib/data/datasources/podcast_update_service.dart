@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:workmanager/workmanager.dart';
+// import 'package:workmanager/workmanager.dart'; // 暫時移除
 import '../../domain/repositories/podcast_repository.dart';
 import '../../domain/repositories/subscription_repository.dart';
 import '../../domain/entities/podcast.dart';
@@ -15,26 +15,32 @@ class PodcastUpdateService {
   PodcastUpdateService(this._podcastRepository, this._subscriptionRepository);
 
   Future<void> initialize() async {
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: false,
-    );
+    // 暫時移除 Workmanager 初始化
+    // await Workmanager().initialize(
+    //   callbackDispatcher,
+    //   isInDebugMode: false,
+    // );
+    print('PodcastUpdateService 初始化完成（Workmanager 暫時停用）');
   }
 
   Future<void> schedulePeriodicUpdate() async {
-    await Workmanager().registerPeriodicTask(
-      podcastUpdateTask,
-      podcastUpdateTask,
-      frequency: const Duration(hours: 6),
-      constraints: Constraints(
-        networkType: NetworkType.connected,
-        requiresBatteryNotLow: true,
-      ),
-    );
+    // 暫時移除 Workmanager 週期性任務
+    // await Workmanager().registerPeriodicTask(
+    //   podcastUpdateTask,
+    //   podcastUpdateTask,
+    //   frequency: const Duration(hours: 6),
+    //   constraints: Constraints(
+    //     networkType: NetworkType.connected,
+    //     requiresBatteryNotLow: true,
+    //   ),
+    // );
+    print('週期性更新已排程（Workmanager 暫時停用）');
   }
 
   Future<void> cancelPeriodicUpdate() async {
-    await Workmanager().cancelByUniqueName(podcastUpdateTask);
+    // 暫時移除 Workmanager 取消任務
+    // await Workmanager().cancelByUniqueName(podcastUpdateTask);
+    print('週期性更新已取消（Workmanager 暫時停用）');
   }
 
   static Future<void> checkForUpdates(
@@ -60,18 +66,20 @@ class PodcastUpdateService {
 
   static Future<void> _sendUpdateNotification(Podcast podcast) async {
     // TODO: 實現通知功能
+    print('播客有新更新：${podcast.title}');
   }
 }
 
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    switch (task) {
-      case podcastUpdateTask:
-        // 在這裡實現實際的更新邏輯
-        return true;
-      default:
-        return false;
-    }
-  });
-} 
+// 暫時註解掉 Workmanager 回調
+// @pragma('vm:entry-point')
+// void callbackDispatcher() {
+//   Workmanager().executeTask((task, inputData) async {
+//     switch (task) {
+//       case podcastUpdateTask:
+//         // 在這裡實現實際的更新邏輯
+//         return true;
+//       default:
+//         return false;
+//     }
+//   });
+// } 

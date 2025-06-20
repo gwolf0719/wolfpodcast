@@ -9,24 +9,24 @@ abstract class EpisodeLocalDataSource {
 }
 
 class EpisodeLocalDataSourceImpl implements EpisodeLocalDataSource {
-  final Box<Map> _episodeBox;
+  final Box<dynamic> _episodeBox;
 
   EpisodeLocalDataSourceImpl(this._episodeBox);
 
   @override
   Future<List<Episode>> getDownloadedEpisodes() async {
     final episodes = _episodeBox.values
-        .where((map) => map['isDownloaded'] == true)
-        .map((map) => _mapToEpisode(map))
+        .where((item) => item is Map && item['isDownloaded'] == true)
+        .map((item) => _mapToEpisode(item as Map))
         .toList();
     return episodes;
   }
 
   @override
   Future<Episode?> getEpisode(String id) async {
-    final map = _episodeBox.get(id);
-    if (map == null) return null;
-    return _mapToEpisode(map);
+    final item = _episodeBox.get(id);
+    if (item == null || item is! Map) return null;
+    return _mapToEpisode(item);
   }
 
   @override

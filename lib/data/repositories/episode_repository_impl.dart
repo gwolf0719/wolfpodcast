@@ -30,17 +30,10 @@ class EpisodeRepositoryImpl implements EpisodeRepository {
     try {
       final localEpisodes = await _localDataSource.getDownloadedEpisodes();
       final filteredLocal = localEpisodes.where((e) => e.podcastId == podcastId).toList();
-      if (filteredLocal.isNotEmpty) {
-        return filteredLocal;
-      }
-
-      final remoteEpisodes = await _remoteDataSource.getEpisodesByPodcastId(podcastId);
-      for (var episode in remoteEpisodes) {
-        await _localDataSource.saveEpisode(episode);
-      }
-      return remoteEpisodes;
+      return filteredLocal;
     } catch (e) {
-      rethrow;
+      // 如果本地獲取失敗，返回空列表而不是拋出異常
+      return [];
     }
   }
 
@@ -187,18 +180,13 @@ class EpisodeRepositoryImpl implements EpisodeRepository {
   @override
   Future<List<Episode>> getEpisodesByPodcastId(String podcastId) async {
     try {
+      // 只從本地資料源獲取集數
       final episodes = await _localDataSource.getDownloadedEpisodes();
       final filteredEpisodes = episodes.where((e) => e.podcastId == podcastId).toList();
-      if (filteredEpisodes.isEmpty) {
-        final remoteEpisodes = await _remoteDataSource.getEpisodesByPodcastId(podcastId);
-        for (var episode in remoteEpisodes) {
-          await _localDataSource.saveEpisode(episode);
-        }
-        return remoteEpisodes;
-      }
       return filteredEpisodes;
     } catch (e) {
-      rethrow;
+      // 如果本地獲取失敗，返回空列表而不是拋出異常
+      return [];
     }
   }
 

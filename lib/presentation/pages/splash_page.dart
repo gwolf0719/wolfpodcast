@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import 'home_page.dart';
 
@@ -57,9 +55,6 @@ class _SplashPageState extends State<SplashPage>
 
   Future<void> _initializeApp() async {
     try {
-      // 初始化本地儲存
-      await _initializeHive();
-      
       // 模擬載入時間（實際應用中這裡會初始化各種服務）
       await Future.delayed(const Duration(seconds: 2));
       
@@ -81,13 +76,6 @@ class _SplashPageState extends State<SplashPage>
       // 處理初始化錯誤
       _showErrorDialog(e.toString());
     }
-  }
-
-  Future<void> _initializeHive() async {
-    // 開啟 Hive boxes
-    await Hive.openBox(AppConstants.settingsBox);
-    await Hive.openBox(AppConstants.playlistsBox);
-    await Hive.openBox(AppConstants.episodesBox);
   }
 
   void _showErrorDialog(String error) {
@@ -165,7 +153,7 @@ class _SplashPageState extends State<SplashPage>
                       
                       // 應用程式名稱
                       Text(
-                        AppConstants.appName,
+                        'Wolf Podcast',
                         style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           color: AppTheme.playerText,
                           fontWeight: FontWeight.bold,
@@ -193,7 +181,7 @@ class _SplashPageState extends State<SplashPage>
                       
                       // 載入文字
                       Text(
-                        '正在初始化...',
+                        '正在初始化應用程式...',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.playerSecondaryText,
                         ),

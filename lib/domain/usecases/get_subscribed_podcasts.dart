@@ -1,8 +1,8 @@
 import '../entities/podcast.dart';
-import '../repositories/podcast_repository.dart';
+import '../repositories/subscription_repository.dart';
 
 class GetSubscribedPodcasts {
-  final PodcastRepository repository;
+  final SubscriptionRepository repository;
 
   GetSubscribedPodcasts(this.repository);
 

@@ -23,14 +23,14 @@ class EpisodeModelAdapter extends TypeAdapter<EpisodeModel> {
       description: fields[3] as String,
       imageUrl: fields[4] as String,
       audioUrl: fields[5] as String,
-      duration: Duration(milliseconds: fields[6] as int),
+      duration: Duration(seconds: fields[6] as int),
       publishDate: fields[7] as DateTime,
       downloadPath: fields[8] as String?,
       isDownloaded: fields[9] as bool? ?? false,
       isDownloading: fields[10] as bool? ?? false,
       downloadProgress: fields[11] as double? ?? 0.0,
       isPlayed: fields[12] as bool? ?? false,
-      position: fields[13] != null ? Duration(milliseconds: fields[13] as int) : null,
+      position: fields[13] != null ? Duration(seconds: fields[13] as int) : null,
       episodeNumber: fields[14] as int?,
       seasonNumber: fields[15] as int?,
       guid: fields[16] as String?,
@@ -54,7 +54,7 @@ class EpisodeModelAdapter extends TypeAdapter<EpisodeModel> {
       ..writeByte(5)
       ..write(obj.audioUrl)
       ..writeByte(6)
-      ..write(obj.duration.inMilliseconds)
+      ..write(obj.duration.inSeconds)
       ..writeByte(7)
       ..write(obj.publishDate)
       ..writeByte(8)
@@ -68,7 +68,7 @@ class EpisodeModelAdapter extends TypeAdapter<EpisodeModel> {
       ..writeByte(12)
       ..write(obj.isPlayed)
       ..writeByte(13)
-      ..write(obj.position?.inMilliseconds)
+      ..write(obj.position?.inSeconds)
       ..writeByte(14)
       ..write(obj.episodeNumber)
       ..writeByte(15)

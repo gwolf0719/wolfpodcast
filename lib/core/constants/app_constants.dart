@@ -2,6 +2,7 @@ class AppConstants {
   // App Info
   static const String appName = 'Wolf Podcast';
   static const String appVersion = '1.0.0';
+  static const String userAgent = 'Wolf Podcast/1.0.0';
   
   // Database
   static const String databaseName = 'wolf_podcast.db';
@@ -44,4 +45,47 @@ class AppConstants {
   static const String searchError = '搜尋失敗，請重試';
   static const String playbackError = '播放失敗';
   static const String downloadError = '下載失敗';
+  
+  // Cache Settings
+  static const Duration cacheExpiration = Duration(hours: 24);
+  static const int maxCacheSize = 100; // MB
+  
+  // Audio Settings
+  static const int defaultBufferSize = 8192;
+  static const Duration seekThreshold = Duration(seconds: 5);
+  
+  // UI Settings
+  static const double defaultPadding = 16.0;
+  static const double defaultRadius = 8.0;
+  
+  // Pagination Settings
+  static const int defaultPageSize = 20;
+  static const int maxPageSize = 100;
+}
+
+/// Podcast Category Model
+class PodcastCategory {
+  final String id;
+  final String name;
+  final String englishName;
+  final List<String> subcategories;
+
+  const PodcastCategory({
+    required this.id,
+    required this.name,
+    required this.englishName,
+    this.subcategories = const [],
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PodcastCategory && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'PodcastCategory(id: $id, name: $name)';
 } 

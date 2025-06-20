@@ -17,10 +17,32 @@ class HiveStorage {
   Future<void> init() async {
     await Hive.initFlutter();
     
-    // 打開所有需要的 Box
-    _settingsBox = await Hive.openBox(AppConstants.settingsBox);
-    _playlistsBox = await Hive.openBox(AppConstants.playlistsBox);
-    _episodesBox = await Hive.openBox(AppConstants.episodesBox);
+    // 註冊 Adapters（避免重複註冊）
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(PodcastModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(EpisodeModelAdapter());
+    }
+    
+    // 檢查並打開所有需要的 Box，避免重複開啟
+    if (!Hive.isBoxOpen(AppConstants.settingsBox)) {
+      _settingsBox = await Hive.openBox(AppConstants.settingsBox);
+    } else {
+      _settingsBox = Hive.box(AppConstants.settingsBox);
+    }
+    
+    if (!Hive.isBoxOpen(AppConstants.playlistsBox)) {
+      _playlistsBox = await Hive.openBox(AppConstants.playlistsBox);
+    } else {
+      _playlistsBox = Hive.box(AppConstants.playlistsBox);
+    }
+    
+    if (!Hive.isBoxOpen(AppConstants.episodesBox)) {
+      _episodesBox = await Hive.openBox(AppConstants.episodesBox);
+    } else {
+      _episodesBox = Hive.box(AppConstants.episodesBox);
+    }
   }
 
   /// 開啟指定的 Box

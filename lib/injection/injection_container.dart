@@ -8,6 +8,11 @@ import 'package:hive/hive.dart';
 // Core
 import '../core/database/database_helper.dart';
 import '../core/storage/hive_storage.dart';
+import '../core/constants/app_constants.dart';
+
+// Models & Adapters
+import '../data/models/podcast_model.dart';
+import '../data/models/episode_model.dart';
 
 // Data Sources
 import '../data/datasources/audio_player_service.dart';
@@ -17,7 +22,8 @@ import '../data/datasources/local/episode_local_datasource.dart';
 import '../data/datasources/remote/podcast_remote_datasource.dart';
 import '../data/datasources/remote/episode_remote_datasource.dart';
 import '../data/datasources/download_manager.dart';
-import '../data/datasources/podcast_update_service.dart';
+import '../domain/services/podcast_update_service.dart' as domain_update_service;
+import '../data/datasources/podcast_update_service.dart' as data_update_service;
 
 // Repositories
 import '../data/repositories/subscription_repository.dart';
@@ -56,67 +62,54 @@ final getIt = GetIt.instance;
 
 Future<void> init() async {
   // =======================================
-  // Core
+  // Core & External Dependencies
   // =======================================
   
-  // Database
+  // Hive Storage Wrapper - 統一管理 Hive 初始化
+  getIt.registerLazySingleton<HiveStorage>(() => HiveStorage.instance);
+  await getIt<HiveStorage>().init(); // 初始化 HiveStorage，它會處理所有的 Hive 設定和 Adapter 註冊
+  
+  // 從 HiveStorage 獲取已經開啟的 Boxes
+  final settingsBox = Hive.box(AppConstants.settingsBox);
+  final playlistsBox = Hive.box(AppConstants.playlistsBox);
+  final episodesBox = Hive.box(AppConstants.episodesBox);
+  
+  getIt.registerLazySingleton<Box<dynamic>>(() => settingsBox, instanceName: AppConstants.settingsBox);
+  getIt.registerLazySingleton<Box<dynamic>>(() => playlistsBox, instanceName: AppConstants.playlistsBox);
+  getIt.registerLazySingleton<Box<dynamic>>(() => episodesBox, instanceName: AppConstants.episodesBox);
+  
+  // Database (SQLite)
   final database = await DatabaseHelper.instance.database;
   getIt.registerLazySingleton<Database>(() => database);
   
-  // Hive Storage
-  final hiveStorage = HiveStorage.instance;
-  await hiveStorage.init();
-  getIt.registerLazySingleton<HiveStorage>(() => hiveStorage);
-  
-  // HTTP Client
+  // HTTP Clients
   getIt.registerLazySingleton(() => http.Client());
-  
-  // Dio Client
-  final dio = Dio();
-  dio.options.connectTimeout = const Duration(seconds: 30);
-  dio.options.receiveTimeout = const Duration(seconds: 30);
+  final dio = Dio(BaseOptions(
+    connectTimeout: AppConstants.networkTimeout,
+    receiveTimeout: AppConstants.networkTimeout,
+  ));
   getIt.registerLazySingleton<Dio>(() => dio);
   
   // =======================================
   // Data Sources
   // =======================================
   
-  // Audio Player Service
-  getIt.registerLazySingleton<AudioPlayerService>(
-    () => AudioPlayerService.instance,
-  );
-  
-  // Podcast Search Service
-  getIt.registerLazySingleton<PodcastSearchService>(
-    () => PodcastSearchService.instance,
-  );
-  
-  // Download Manager
-  getIt.registerLazySingleton<DownloadManager>(
-    () => DownloadManager(dio: getIt()),
-  );
-  
-  // Podcast Update Service
-  getIt.registerLazySingleton<PodcastUpdateService>(
-    () => PodcastUpdateService(getIt(), getIt()),
-  );
+  getIt.registerLazySingleton<AudioPlayerService>(() => AudioPlayerService.instance);
+  getIt.registerLazySingleton<PodcastSearchService>(() => PodcastSearchService.instance);
+  getIt.registerLazySingleton<DownloadManager>(() => DownloadManager(dio: getIt()));
   
   // Local Data Sources
-  getIt.registerLazySingleton<PodcastLocalDataSource>(
-    () => PodcastLocalDataSourceImpl(getIt(), getIt()),
-  );
-  
+  getIt.registerLazySingleton<PodcastLocalDataSource>(() => PodcastLocalDataSourceImpl(getIt(), getIt()));
   getIt.registerLazySingleton<EpisodeLocalDataSource>(
-    () => EpisodeLocalDataSourceImpl(getIt()),
-  );
-  
-  // Remote Data Sources
-  getIt.registerLazySingleton<PodcastRemoteDataSource>(
-    () => PodcastRemoteDataSourceImpl(getIt()),
-  );
+      () => EpisodeLocalDataSourceImpl(getIt<Box<dynamic>>(instanceName: AppConstants.episodesBox)));
 
-  getIt.registerLazySingleton<EpisodeRemoteDataSource>(
-    () => EpisodeRemoteDataSourceImpl(getIt()),
+  // Remote Data Sources
+  getIt.registerLazySingleton<PodcastRemoteDataSource>(() => PodcastRemoteDataSourceImpl(getIt()));
+  getIt.registerLazySingleton<EpisodeRemoteDataSource>(() => EpisodeRemoteDataSourceImpl(getIt()));
+  
+  // Update Service
+  getIt.registerLazySingleton<data_update_service.PodcastUpdateService>(
+    () => data_update_service.PodcastUpdateService(getIt(), getIt()),
   );
   
   // =======================================
@@ -124,53 +117,50 @@ Future<void> init() async {
   // =======================================
   
   getIt.registerLazySingleton<PodcastRepository>(
-    () => PodcastRepositoryImpl(
-      localDataSource: getIt(),
-      remoteDataSource: getIt(),
-      storage: getIt(),
-    ),
+    () => PodcastRepositoryImpl(localDataSource: getIt(), remoteDataSource: getIt(), storage: getIt()),
   );
   
   getIt.registerLazySingleton<EpisodeRepository>(
-    () => EpisodeRepositoryImpl(
-      getIt<EpisodeLocalDataSource>(),
-      getIt<EpisodeRemoteDataSource>(),
-      getIt<DownloadManager>(),
-      getIt<HiveStorage>(),
-    ),
+    () => EpisodeRepositoryImpl(getIt(), getIt(), getIt(), getIt()),
   );
   
   getIt.registerLazySingleton<PlayerRepository>(
-    () => PlayerRepositoryImpl(
-      audioPlayerService: getIt(),
-      hiveStorage: getIt(),
-    ),
+    () => PlayerRepositoryImpl(audioPlayerService: getIt(), hiveStorage: getIt()),
   );
   
-  // Subscription Repository
-  getIt.registerLazySingleton<SubscriptionRepository>(
-    () => SubscriptionRepositoryImpl(getIt()),
-  );
+  getIt.registerLazySingleton<SubscriptionRepository>(() {
+    final repo = SubscriptionRepositoryImpl(getIt());
+    repo.initialize(); // 確保初始化
+    return repo;
+  });
   
+  // =======================================
+  // Services
+  // =======================================
+  
+  // 檢查是否有 domain 層的 PodcastUpdateService
+  try {
+    getIt.registerLazySingleton<domain_update_service.PodcastUpdateService>(
+        () => domain_update_service.PodcastUpdateService(podcastRepository: getIt(), storage: getIt()));
+  } catch (e) {
+    // 如果 domain 層的服務不存在，使用 data 層的
+    print('使用 data 層的 PodcastUpdateService');
+  }
+
   // =======================================
   // Use Cases
   // =======================================
   
-  // Podcast Use Cases
   getIt.registerLazySingleton(() => SearchPodcasts(getIt()));
   getIt.registerLazySingleton(() => SubscribeToPodcast(getIt()));
-  getIt.registerLazySingleton(() => GetSubscribedPodcasts(getIt()));
+  getIt.registerLazySingleton(() => GetSubscribedPodcasts(getIt<SubscriptionRepository>()));
   getIt.registerLazySingleton(() => GetPopularPodcasts(getIt()));
   getIt.registerLazySingleton(() => GetSubscriptionCategories(getIt()));
   getIt.registerLazySingleton(() => GetSubscriptionsByCategory(getIt()));
   getIt.registerLazySingleton(() => GetAutoUpdateEnabled(getIt()));
   getIt.registerLazySingleton(() => SetAutoUpdate(getIt()));
   getIt.registerLazySingleton(() => UpdatePodcastCategories(getIt()));
-  
-  // Episode Use Cases
   getIt.registerLazySingleton(() => GetEpisodes(getIt()));
-  
-  // Player Use Cases
   getIt.registerLazySingleton(() => PlayEpisode(getIt()));
   getIt.registerLazySingleton(() => PausePlayback(getIt()));
   getIt.registerLazySingleton(() => SeekToPosition(getIt()));
@@ -179,55 +169,25 @@ Future<void> init() async {
   // BLoCs
   // =======================================
   
-  // Search BLoC
-  getIt.registerFactory(
-    () => SearchBloc(
-      getPopularPodcasts: getIt(),
-      searchPodcasts: getIt(),
-    ),
-  );
+  getIt.registerFactory(() => SearchBloc(getPopularPodcasts: getIt(), searchPodcasts: getIt()));
   
-  // Subscription BLoC
-  getIt.registerFactory(
-    () => SubscriptionBloc(
-      getSubscriptionCategories: getIt(),
-      getSubscriptionsByCategory: getIt(),
-      updatePodcastCategories: getIt(),
-      getAutoUpdateEnabled: getIt(),
-      setAutoUpdate: getIt(),
-      updateService: getIt(),
-    ),
-  );
-  
-  // Player BLoC
-  getIt.registerFactory(
-    () => PlayerBloc(
-      playerRepository: getIt(),
-      episodeRepository: getIt(),
-    ),
-  );
-
-  // Download BLoC
-  getIt.registerFactory(
-    () => DownloadBloc(episodeRepository: getIt()),
-  );
-
-  // External
-  final episodeBox = await Hive.openBox<Map>('episodes');
-  getIt.registerLazySingleton(() => episodeBox);
+  getIt.registerFactory(() => SubscriptionBloc(
+        getSubscribedPodcasts: getIt(),
+        getSubscriptionCategories: getIt(),
+        getSubscriptionsByCategory: getIt(),
+        updatePodcastCategories: getIt(),
+        getAutoUpdateEnabled: getIt(),
+        setAutoUpdate: getIt(),
+        updateService: getIt(),
+      ));
+      
+  getIt.registerFactory(() => PlayerBloc(playerRepository: getIt(), episodeRepository: getIt()));
+  getIt.registerFactory(() => DownloadBloc(episodeRepository: getIt()));
 }
 
-/// 清理所有注册的依赖项
 Future<void> dispose() async {
-  // 关闭数据库连接
   await DatabaseHelper.instance.close();
-  
-  // 释放音频播放器资源
   await getIt<AudioPlayerService>().dispose();
-  
-  // 释放下载管理器资源
   await getIt<DownloadManager>().dispose();
-  
-  // 重置 GetIt
   await getIt.reset();
 } 

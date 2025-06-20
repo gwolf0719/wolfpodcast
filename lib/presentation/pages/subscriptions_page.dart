@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/subscription/subscription_bloc.dart';
 import '../widgets/podcast_list.dart';
+import 'simple_podcast_detail_page.dart';
 
 class SubscriptionsPage extends StatefulWidget {
   const SubscriptionsPage({Key? key}) : super(key: key);
@@ -14,7 +15,8 @@ class SubscriptionsPageState extends State<SubscriptionsPage> {
   @override
   void initState() {
     super.initState();
-    context.read<SubscriptionBloc>().add(LoadSubscriptionCategoriesEvent());
+    // 載入所有訂閱的播客
+    context.read<SubscriptionBloc>().add(LoadSubscriptionsEvent());
   }
 
   void _showCategoryDialog(BuildContext context, String podcastId, List<String> currentCategories) {
@@ -81,6 +83,32 @@ class SubscriptionsPageState extends State<SubscriptionsPage> {
     );
   }
 
+  void _onPodcastTap(Podcast podcast) {
+    print('🎯 訂閱頁面：點擊播客 ${podcast.title}');
+    try {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) {
+            print('🎯 正在導航到 SimplePodcastDetailPage');
+            return SimplePodcastDetailPage(podcast: podcast);
+          },
+        ),
+      ).then((_) {
+        print('🎯 從播客詳情頁面返回');
+      }).catchError((error) {
+        print('🔥 導航錯誤: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('導航失敗: $error')),
+        );
+      });
+    } catch (e) {
+      print('🔥 點擊處理錯誤: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('處理點擊失敗: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,10 +117,25 @@ class SubscriptionsPageState extends State<SubscriptionsPage> {
       ),
       body: BlocBuilder<SubscriptionBloc, SubscriptionState>(
         builder: (context, state) {
+          print('🎯 訂閱狀態: ${state.runtimeType}');
+          
           if (state is SubscriptionLoadingState) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is SubscriptionErrorState) {
-            return Center(child: Text(state.message));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('錯誤: ${state.message}'),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<SubscriptionBloc>().add(LoadSubscriptionsEvent());
+                    },
+                    child: const Text('重試'),
+                  ),
+                ],
+              ),
+            );
           } else if (state is SubscriptionCategoriesLoaded) {
             return ListView(
               children: [
@@ -132,6 +175,7 @@ class SubscriptionsPageState extends State<SubscriptionsPage> {
                 Expanded(
                   child: PodcastList(
                     podcasts: state.podcasts,
+                    onPodcastTap: _onPodcastTap,
                     onCategoryEdit: (podcast) => _showCategoryDialog(
                       context,
                       podcast.id,
@@ -142,8 +186,24 @@ class SubscriptionsPageState extends State<SubscriptionsPage> {
               ],
             );
           } else if (state is SubscriptionLoadedState) {
+            print('🎯 載入了 ${state.subscriptions.length} 個訂閱');
+            if (state.subscriptions.isEmpty) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.podcasts, size: 64, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text('還沒有訂閱任何播客'),
+                    SizedBox(height: 8),
+                    Text('前往探索或搜尋頁面來訂閱播客'),
+                  ],
+                ),
+              );
+            }
             return PodcastList(
               podcasts: state.subscriptions,
+              onPodcastTap: _onPodcastTap,
               onCategoryEdit: (podcast) => _showCategoryDialog(
                 context,
                 podcast.id,
@@ -151,7 +211,21 @@ class SubscriptionsPageState extends State<SubscriptionsPage> {
               ),
             );
           } else {
-            return const Center(child: Text('開始訂閱播客'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('開始訂閱播客'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<SubscriptionBloc>().add(LoadSubscriptionsEvent());
+                    },
+                    child: const Text('重新載入'),
+                  ),
+                ],
+              ),
+            );
           }
         },
       ),

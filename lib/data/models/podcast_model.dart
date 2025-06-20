@@ -3,7 +3,7 @@ import '../../domain/entities/podcast.dart';
 
 part 'podcast_model.g.dart';
 
-@HiveType(typeId: 0)
+@HiveType(typeId: 2)
 class PodcastModel extends HiveObject {
   @HiveField(0)
   final String id;

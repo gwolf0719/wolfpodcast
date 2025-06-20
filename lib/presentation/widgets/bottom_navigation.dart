@@ -17,8 +17,16 @@ class BottomNavigation extends StatelessWidget {
       onDestinationSelected: onIndexChanged,
       destinations: const [
         NavigationDestination(
+          icon: Icon(Icons.explore),
+          label: '探索',
+        ),
+        NavigationDestination(
           icon: Icon(Icons.search),
           label: '搜尋',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.subscriptions),
+          label: '訂閱',
         ),
         NavigationDestination(
           icon: Icon(Icons.download),
