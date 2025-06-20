@@ -1,0 +1,126 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Wolf Podcast MDC (Memory Design Cursor)
+
+## 專案概述
+Wolf Podcast 是一個使用 Flutter 開發的播客應用程式，採用清晰的分層架構設計。
+
+## 架構設計
+採用清晰的分層架構（Clean Architecture）：
+- Presentation Layer (UI)
+- Domain Layer (業務邏輯)
+- Data Layer (資料處理)
+
+### 目錄結構規範
+```
+lib/
+├── core/          # 核心功能和通用工具
+├── data/          # 資料層實作
+├── domain/        # 業務邏輯和實體
+├── injection/     # 依賴注入
+└── presentation/  # UI 層
+```
+
+## 寫作風格指南
+
+### 命名規範
+1. 檔案命名：
+   - 全小寫，使用底線分隔：`user_repository.dart`
+   - 測試檔案加上 `_test` 後綴：`user_repository_test.dart`
+
+2. 類別命名：
+   - 使用 PascalCase：`UserRepository`
+   - Bloc 類別加上 Bloc 後綴：`SearchBloc`
+   - 實作類別加上 Impl 後綴：`UserRepositoryImpl`
+
+3. 變數命名：
+   - 使用 camelCase：`userName`
+   - 私有變數以底線開頭：`_privateVariable`
+   - 常數使用全大寫：`MAX_RETRY_COUNT`
+
+### 程式碼格式
+1. 縮排：使用 2 個空格
+2. 最大行寬：80 字元
+3. 使用尾隨逗號以獲得更好的格式化
+
+### 註解規範
+1. 公開 API 必須添加文檔註解
+2. 複雜邏輯需要添加說明性註解
+3. TODO 註解必須包含負責人和時間
+
+## 功能目標
+
+### 核心功能
+1. 播客搜尋
+   - [x] 關鍵字搜尋
+   - [x] 分類瀏覽
+   - [x] 熱門推薦
+
+2. 播放控制
+   - [x] 基本播放/暫停
+   - [x] 進度控制
+   - [x] 播放速度調整
+   - [x] 音量控制
+   - [x] 睡眠定時器
+
+3. 訂閱管理
+   - [x] 訂閱/取消訂閱
+   - [x] 訂閱列表
+   - [x] 訂閱分類
+   - [x] 自動更新
+
+4. 離線功能
+   - [ ] 節目下載
+   - [ ] 離線播放
+   - [ ] 下載管理
+
+5. 個人化
+   - [ ] 播放歷史
+   - [ ] 收藏功能
+   - [ ] 自定義主題
+   - [ ] 播放列表
+
+### 技術需求
+1. 效能優化
+   - [ ] 圖片快取
+   - [ ] 音頻快取
+   - [ ] 啟動時間優化
+
+2. 資料存儲
+   - [x] 本地資料庫 (Hive)
+   - [ ] 同步機制
+   - [ ] 資料備份
+
+3. 使用者體驗
+   - [ ] 手勢控制
+   - [ ] 背景播放
+
+4. 整合測試
+   - [ ] 單元測試覆蓋率 > 80%
+   - [ ] 整合測試
+   - [ ] UI 測試
+
+## 版本控制
+- 使用 Git Flow 工作流
+- 分支命名規範：
+  - 功能分支：feature/
+  - 修復分支：bugfix/
+  - 發布分支：release/
+  - 熱修復：hotfix/
+
+## CI/CD
+- [ ] 自動化測試
+- [ ] 自動化部署
+- [ ] 程式碼品質檢查
+- [ ] 版本發布自動化
+
+## 第三方依賴
+- just_audio: 音頻播放
+- bloc: 狀態管理
+- get_it: 依賴注入
+- hive: 本地存儲
+- dio: 網路請求
+
