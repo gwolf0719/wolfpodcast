@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../domain/entities/podcast.dart';
@@ -7,7 +8,10 @@ import '../../domain/repositories/episode_repository.dart';
 import '../../domain/repositories/subscription_repository.dart';
 import '../../data/datasources/podcast_search_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/html_utils.dart';
+import '../../presentation/bloc/download/download_bloc.dart';
 import 'player_page.dart';
+import 'home_page.dart';
 
 class SimplePodcastDetailPage extends StatefulWidget {
   final Podcast podcast;
@@ -84,32 +88,82 @@ class _SimplePodcastDetailPageState extends State<SimplePodcastDetailPage> {
   }
 
   Future<void> _toggleSubscription() async {
+    print('🔥 _toggleSubscription 被調用，當前狀態: $_isSubscribed');
+    
+    // 如果已經訂閱，不執行任何操作
+    if (_isSubscribed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已經訂閱此播客')),
+      );
+      return;
+    }
+    
     try {
+      print('🔥 正在獲取 SubscriptionRepository');
       final subscriptionRepo = getIt.get<SubscriptionRepository>();
+      print('🔥 SubscriptionRepository 獲取成功');
       
-      if (_isSubscribed) {
-        await subscriptionRepo.unsubscribePodcast(widget.podcast.id);
-        setState(() {
-          _isSubscribed = false;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已取消訂閱')),
-        );
-      } else {
-        await subscriptionRepo.subscribePodcast(widget.podcast);
-        setState(() {
-          _isSubscribed = true;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('訂閱成功！')),
-        );
-      }
+      print('🔥 執行訂閱，Podcast: ${widget.podcast.title}');
+      await subscriptionRepo.subscribePodcast(widget.podcast);
+      print('🔥 訂閱 API 調用完成');
+      
+      setState(() {
+        _isSubscribed = true;
+      });
+      print('🔥 狀態更新完成，新狀態: $_isSubscribed');
+      
+      print('🔥 準備顯示 SnackBar');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('訂閱成功！正在跳轉到訂閱列表...'),
+          action: SnackBarAction(
+            label: '立即跳轉',
+            onPressed: () {
+              print('🔥 手動觸發跳轉');
+              _navigateToSubscriptionsTab();
+            },
+          ),
+        ),
+      );
+      print('🔥 SnackBar 已顯示');
+      
+      // 立即跳轉，不延遲
+      print('🔥 開始跳轉到訂閱頁面');
+      _navigateToSubscriptionsTab();
     } catch (e) {
+      print('🔥 _toggleSubscription 發生錯誤: $e');
+      print('🔥 錯誤堆疊: ${e.toString()}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('操作失敗: ${e.toString()}')),
       );
+    }
+  }
+
+  void _navigateToSubscriptionsTab() {
+    print('🔥 _navigateToSubscriptionsTab 被調用');
+    
+    try {
+      // 簡化導航邏輯：回到主頁面並切換到訂閱標籤
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) {
+            print('🔥 建構新的 HomePage with tab 2');
+            return const HomePage(initialTab: 2);
+          },
+        ),
+        (route) => false, // 移除所有頁面
+      );
+      print('🔥 導航完成');
+    } catch (e) {
+      print('🔥 導航失敗: $e');
+      
+      // 備用方案：簡單的 pop 回到上一頁
+      try {
+        Navigator.of(context).pop();
+        print('🔥 備用方案執行完成');
+      } catch (e2) {
+        print('🔥 備用方案也失敗: $e2');
+      }
     }
   }
 
@@ -210,7 +264,11 @@ class _SimplePodcastDetailPageState extends State<SimplePodcastDetailPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _toggleSubscription,
+                onPressed: _isSubscribed ? null : () {
+                  print('🔥🔥🔥 按鈕被點擊了！');
+                  print('🔥🔥🔥 當前訂閱狀態: $_isSubscribed');
+                  _toggleSubscription();
+                },
                 icon: Icon(_isSubscribed ? Icons.check : Icons.add),
                 label: Text(_isSubscribed ? '已訂閱' : '訂閱'),
                 style: ElevatedButton.styleFrom(
@@ -268,6 +326,20 @@ class _SimplePodcastDetailPageState extends State<SimplePodcastDetailPage> {
                   ),
                 ),
                 const Spacer(),
+                if (_episodes.isNotEmpty && !_isLoadingEpisodes) ...[
+                  ElevatedButton.icon(
+                    onPressed: _playRandomEpisode,
+                    icon: const Icon(Icons.shuffle, size: 18),
+                    label: const Text('隨機播放'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.playerAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 if (_isLoadingEpisodes)
                   const SizedBox(
                     width: 20,
@@ -430,7 +502,7 @@ class _SimplePodcastDetailPageState extends State<SimplePodcastDetailPage> {
             const SizedBox(height: 4),
             if (episode.description.isNotEmpty)
               Text(
-                episode.description,
+                HtmlUtils.htmlToPlainText(episode.description),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -498,5 +570,21 @@ class _SimplePodcastDetailPageState extends State<SimplePodcastDetailPage> {
         ),
       ),
     );
+  }
+
+  void _playRandomEpisode() {
+    if (_episodes.isEmpty) return;
+    
+    final random = DateTime.now().millisecondsSinceEpoch % _episodes.length;
+    final randomEpisode = _episodes[random];
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('隨機播放：${randomEpisode.title}'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    
+    _playEpisode(randomEpisode);
   }
 } 

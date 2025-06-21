@@ -1,40 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
-import '../../domain/repositories/subscription_repository.dart';
 import '../../domain/entities/podcast.dart';
+import '../bloc/subscription/subscription_bloc.dart';
 import '../widgets/bottom_navigation.dart';
 import 'search_page.dart';
 import 'downloads_page.dart';
 import 'settings_page.dart';
 import 'categories_page.dart';
 import 'simple_podcast_detail_page.dart';
+import 'subscriptions_page.dart';
 
 
 final getIt = GetIt.instance;
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  final int initialTab;
+  
+  const HomePage({Key? key, this.initialTab = 0}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    const DiscoverPage(),
-    const SearchPage(),
-    const SubscriptionsPage(),
-    const DownloadsPage(),
-    const SettingsPage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialTab;
+    _pages = [
+      const DiscoverPage(),
+      const SearchPage(),
+      const SubscriptionsPage(), // 使用 BLoC 版本的頁面
+      const DownloadsPage(),
+      const SettingsPage(),
+    ];
 
-  // ignore: unused_field
-  final SubscriptionRepository _subscriptionRepo = getIt<SubscriptionRepository>();
+    // 如果初始頁面是訂閱頁，觸發一次載入事件
+    if (_currentIndex == 2) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<SubscriptionBloc>().add(LoadSubscriptionsEvent());
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +63,11 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _currentIndex = index;
           });
+          
+          // 如果切換到訂閱頁面，發送事件以刷新列表
+          if (index == 2) {
+            context.read<SubscriptionBloc>().add(LoadSubscriptionsEvent());
+          }
         },
       ),
     );
@@ -331,331 +350,7 @@ class DiscoverPage extends StatelessWidget {
   }
 }
 
-// 訂閱頁面
-class SubscriptionsPage extends StatefulWidget {
-  const SubscriptionsPage({super.key});
 
-  @override
-  State<SubscriptionsPage> createState() => _SubscriptionsPageState();
-}
-
-class _SubscriptionsPageState extends State<SubscriptionsPage> {
-  final SubscriptionRepository _subscriptionRepo = getIt<SubscriptionRepository>();
-  List<Podcast> _subscribedPodcasts = [];
-  bool _isLoading = true;
-  String _errorMessage = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSubscriptions();
-  }
-
-  Future<void> _loadSubscriptions() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-
-    try {
-      await _subscriptionRepo.initialize();
-      final podcasts = await _subscriptionRepo.getSubscribedPodcasts();
-      setState(() {
-        _subscribedPodcasts = podcasts;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = '載入訂閱失敗：$e';
-      });
-    }
-  }
-
-  Future<void> _refreshSubscriptions() async {
-    await _loadSubscriptions();
-  }
-
-  Future<void> _unsubscribePodcast(Podcast podcast) async {
-    try {
-      await _subscriptionRepo.unsubscribePodcast(podcast.id);
-      await _refreshSubscriptions();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('已取消訂閱：${podcast.title}'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('取消訂閱失敗：$e'),
-            duration: const Duration(seconds: 3),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('我的訂閱 (${_subscribedPodcasts.length})'),
-        actions: [
-          IconButton(
-            onPressed: _refreshSubscriptions,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshSubscriptions,
-        child: _buildBody(),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (_errorMessage.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage,
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _refreshSubscriptions,
-              child: const Text('重試'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_subscribedPodcasts.isEmpty) {
-      return ListView(
-        children: [
-          const SizedBox(height: 100),
-          const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.subscriptions,
-                  size: 64,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  '尚未訂閱任何頻道',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '前往探索頁面搜尋並訂閱 Podcast',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _subscribedPodcasts.length,
-      itemBuilder: (context, index) {
-        final podcast = _subscribedPodcasts[index];
-        return _buildSubscriptionItem(podcast);
-      },
-    );
-  }
-
-  Widget _buildSubscriptionItem(Podcast podcast) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _onPodcastTap(podcast),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Podcast 圖片
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: podcast.imageUrl.isNotEmpty
-                    ? Image.network(
-                        podcast.imageUrl,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 80,
-                          height: 80,
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          child: const Icon(Icons.podcasts, size: 40),
-                        ),
-                      )
-                    : Container(
-                        width: 80,
-                        height: 80,
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        child: const Icon(Icons.podcasts, size: 40),
-                      ),
-              ),
-              const SizedBox(width: 12),
-              
-              // Podcast 資訊
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      podcast.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      podcast.author,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      podcast.category,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    if (podcast.episodeCount > 0) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${podcast.episodeCount} 集',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              
-              // 操作按鈕
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'unsubscribe':
-                      _showUnsubscribeDialog(podcast);
-                      break;
-                    case 'episodes':
-                      _onViewEpisodes(podcast);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'episodes',
-                    child: ListTile(
-                      leading: Icon(Icons.list),
-                      title: Text('查看集數'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'unsubscribe',
-                    child: ListTile(
-                      leading: Icon(Icons.unsubscribe),
-                      title: Text('取消訂閱'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
-                child: const Icon(Icons.more_vert),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _onPodcastTap(Podcast podcast) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SimplePodcastDetailPage(podcast: podcast),
-      ),
-    );
-  }
-
-  void _onViewEpisodes(Podcast podcast) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => SimplePodcastDetailPage(podcast: podcast),
-      ),
-    );
-  }
-
-  void _showUnsubscribeDialog(Podcast podcast) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('取消訂閱'),
-        content: Text('確定要取消訂閱「${podcast.title}」嗎？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _unsubscribePodcast(podcast);
-            },
-            child: const Text('確定'),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // 播放清單頁面
 class PlaylistsPage extends StatelessWidget {
@@ -707,93 +402,4 @@ class PlaylistsPage extends StatelessWidget {
   }
 }
 
-// 設定頁面
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('設定'),
-      ),
-      body: ListView(
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              '播放設定',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.speed),
-            title: const Text('播放速度'),
-            subtitle: const Text('1.0x'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 設置播放速度
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.timer),
-            title: const Text('睡眠計時器'),
-            subtitle: const Text('關閉'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 設置睡眠計時器
-            },
-          ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              '應用設定',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.palette),
-            title: const Text('主題'),
-            subtitle: const Text('跟隨系統'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 設置主題
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.drive_eta),
-            title: const Text('車用模式'),
-            subtitle: const Text('大按鈕介面'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 切換車用模式
-            },
-          ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              '關於',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('版本'),
-            subtitle: const Text(AppConstants.appVersion),
-          ),
-        ],
-      ),
-    );
-  }
-} 
+ 

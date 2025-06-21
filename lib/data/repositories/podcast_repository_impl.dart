@@ -73,22 +73,40 @@ class PodcastRepositoryImpl implements PodcastRepository {
     String? category,
   }) async {
     try {
-      final popularPodcasts = await remoteDataSource.getPopularPodcasts(category ?? 'all');
-      
-      // 將熱門播客保存到本地緩存
-      await localDataSource.cachePopularPodcasts(popularPodcasts);
-      
-      return popularPodcasts;
-    } catch (e) {
-      // 如果網絡請求失敗，嘗試從本地緩存獲取
-      final cachedPodcasts = await localDataSource.getPopularPodcastsFromCache();
-      
-      // 如果快取也是空的，返回示例資料
-      if (cachedPodcasts.isEmpty) {
-        return _getSamplePopularPodcasts();
+      // 如果指定了分類，使用原來的方法
+      if (category != null && category.isNotEmpty && category != 'all') {
+        final popularPodcasts = await remoteDataSource.getPopularPodcasts(category);
+        
+        // 將熱門播客保存到本地緩存
+        await localDataSource.cachePopularPodcasts(popularPodcasts);
+        
+        return popularPodcasts;
       }
       
-      return cachedPodcasts;
+      // 否則使用台灣地區的熱門排名
+      final topPodcasts = await remoteDataSource.getTopPodcasts();
+      
+      // 將熱門播客保存到本地緩存
+      await localDataSource.cachePopularPodcasts(topPodcasts);
+      
+      // 限制結果數量
+      return topPodcasts.take(limit).toList();
+    } catch (e) {
+      print('🔥 獲取熱門播客錯誤: $e');
+      
+      // 如果網絡請求失敗，嘗試從本地緩存獲取
+      try {
+        final cachedPodcasts = await localDataSource.getPopularPodcastsFromCache();
+        
+        if (cachedPodcasts.isNotEmpty) {
+          return cachedPodcasts.take(limit).toList();
+        }
+      } catch (cacheError) {
+        print('🔥 獲取快取錯誤: $cacheError');
+      }
+      
+      // 如果快取也失敗，返回示例資料
+      return _getSamplePopularPodcasts().take(limit).toList();
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/subscription/subscription_bloc.dart';
 import '../widgets/podcast_list.dart';
 import 'simple_podcast_detail_page.dart';
+import '../../domain/entities/podcast.dart';
 
 class SubscriptionsPage extends StatefulWidget {
   const SubscriptionsPage({Key? key}) : super(key: key);

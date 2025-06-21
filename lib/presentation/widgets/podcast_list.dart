@@ -72,13 +72,6 @@ class PodcastList extends StatelessWidget {
                 ),
               ],
             ),
-            trailing: IconButton(
-              icon: Icon(
-                podcast.isSubscribed ? Icons.favorite : Icons.favorite_border,
-                color: podcast.isSubscribed ? Colors.red : null,
-              ),
-              onPressed: () => onSubscribeTap?.call(podcast),
-            ),
             onTap: () => onPodcastTap?.call(podcast),
           ),
         );

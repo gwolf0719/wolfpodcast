@@ -6,13 +6,15 @@ import '../../domain/entities/podcast.dart';
 
 const podcastUpdateTask = 'podcast_update_task';
 
-class PodcastUpdateService {
+/// 背景更新服務，負責處理播客的背景更新和通知
+/// 與 domain 層的 PodcastUpdateService 不同，這個專門處理背景任務
+class PodcastBackgroundUpdateService {
   // ignore: unused_field
   final PodcastRepository _podcastRepository;
   // ignore: unused_field
   final SubscriptionRepository _subscriptionRepository;
   
-  PodcastUpdateService(this._podcastRepository, this._subscriptionRepository);
+  PodcastBackgroundUpdateService(this._podcastRepository, this._subscriptionRepository);
 
   Future<void> initialize() async {
     // 暫時移除 Workmanager 初始化
@@ -20,7 +22,7 @@ class PodcastUpdateService {
     //   callbackDispatcher,
     //   isInDebugMode: false,
     // );
-    print('PodcastUpdateService 初始化完成（Workmanager 暫時停用）');
+    print('PodcastBackgroundUpdateService 初始化完成（Workmanager 暫時停用）');
   }
 
   Future<void> schedulePeriodicUpdate() async {

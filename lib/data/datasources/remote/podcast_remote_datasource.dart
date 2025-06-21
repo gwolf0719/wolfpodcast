@@ -80,28 +80,10 @@ class PodcastRemoteDataSourceImpl implements PodcastRemoteDataSource {
   @override
   Future<List<Podcast>> searchPodcasts(String query) async {
     try {
-      final response = await _dio.get(
-        '/podcasts/search',
-        queryParameters: {'q': query},
-      );
-      final List<dynamic> podcastsJson = response.data['podcasts'];
-      return podcastsJson.map((json) => Podcast(
-        id: json['id'],
-        title: json['title'],
-        description: json['description'],
-        imageUrl: json['imageUrl'],
-        feedUrl: json['feedUrl'],
-        author: json['author'],
-        category: json['category'],
-        language: json['language'],
-        isSubscribed: false,
-        createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-        lastUpdate: DateTime.parse(json['lastUpdate']),
-        episodeCount: json['episodeCount'] ?? 0,
-        categories: List<String>.from(json['categories'] ?? []),
-      )).toList();
+      // 使用 PodcastSearchService 進行真實的搜尋
+      return await _searchService.searchPodcasts(query);
     } catch (e) {
-      rethrow;
+      throw Exception('搜尋 Podcast 失敗: $e');
     }
   }
 

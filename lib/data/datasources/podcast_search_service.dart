@@ -82,21 +82,35 @@ class PodcastSearchService {
 
   /// 搜尋 Podcast 頻道
   Future<List<Podcast>> searchPodcasts(String query) async {
+    if (query.trim().isEmpty) {
+      return [];
+    }
+    
     try {
+      print('🔍 開始搜尋 podcast: $query');
+      
       final searchResult = await _search.search(
         query,
         country: ps.Country.taiwan,
         limit: 50,
       );
 
+      print('🔍 搜尋結果數量: ${searchResult.resultCount}');
+
       if (searchResult.resultCount > 0) {
-        return searchResult.items
+        final podcasts = searchResult.items
             .map((item) => _searchResultToPodcast(item))
+            .where((podcast) => podcast.feedUrl.isNotEmpty)
             .toList();
+        
+        print('🔍 有效的 podcast 數量: ${podcasts.length}');
+        return podcasts;
       }
       
+      print('🔍 沒有找到任何結果');
       return [];
     } catch (e) {
+      print('🔥 搜尋錯誤: $e');
       throw Exception('搜尋失敗: $e');
     }
   }
@@ -197,7 +211,7 @@ class PodcastSearchService {
     return Podcast(
       id: item.trackId.toString(),
       title: item.trackName ?? '未知標題',
-      description: item.trackViewUrl ?? '',
+      description: item.collectionName ?? item.trackName ?? '',
       imageUrl: item.artworkUrl600 ?? item.artworkUrl100 ?? '',
       feedUrl: item.feedUrl ?? '',
       author: item.artistName ?? '未知作者',
@@ -365,6 +379,8 @@ class PodcastSearchService {
             suggestion.toLowerCase().contains(query.toLowerCase()))
         .toList();
   }
+
+
 
   void dispose() {
     _dio.close();

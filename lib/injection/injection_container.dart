@@ -23,7 +23,7 @@ import '../data/datasources/remote/podcast_remote_datasource.dart';
 import '../data/datasources/remote/episode_remote_datasource.dart';
 import '../data/datasources/download_manager.dart';
 import '../domain/services/podcast_update_service.dart' as domain_update_service;
-import '../data/datasources/podcast_update_service.dart' as data_update_service;
+import '../data/datasources/podcast_update_service.dart' as data_background_service;
 
 // Repositories
 import '../data/repositories/subscription_repository.dart';
@@ -107,9 +107,9 @@ Future<void> init() async {
   getIt.registerLazySingleton<PodcastRemoteDataSource>(() => PodcastRemoteDataSourceImpl(getIt()));
   getIt.registerLazySingleton<EpisodeRemoteDataSource>(() => EpisodeRemoteDataSourceImpl(getIt()));
   
-  // Update Service
-  getIt.registerLazySingleton<data_update_service.PodcastUpdateService>(
-    () => data_update_service.PodcastUpdateService(getIt(), getIt()),
+  // Background Update Service
+  getIt.registerLazySingleton<data_background_service.PodcastBackgroundUpdateService>(
+    () => data_background_service.PodcastBackgroundUpdateService(getIt(), getIt()),
   );
   
   // =======================================

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import '../../domain/entities/podcast.dart';
 import '../bloc/search/search_bloc.dart';
-import 'categories_page.dart';
+import 'simple_podcast_detail_page.dart';
 
 final getIt = GetIt.instance;
 
@@ -22,8 +22,12 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     _searchBloc = getIt<SearchBloc>();
-    // 載入熱門播客
-    _searchBloc.add(const LoadPopularPodcastsEvent());
+    // 在下一個 frame 載入熱門播客，避免 context 問題
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _searchBloc.add(const LoadPopularPodcastsEvent());
+      }
+    });
   }
 
   @override
@@ -40,8 +44,8 @@ class _SearchPageState extends State<SearchPage> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
       ),
-      body: BlocProvider.value(
-        value: _searchBloc,
+      body: BlocProvider<SearchBloc>(
+        create: (context) => _searchBloc,
         child: Column(
           children: [
             // 搜尋框
@@ -50,7 +54,7 @@ class _SearchPageState extends State<SearchPage> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: '搜尋播客名稱或關鍵字...',
+                  hintText: '搜尋播客名稱或關鍵字...（下方顯示台灣熱門排名）',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
@@ -129,7 +133,7 @@ class _SearchPageState extends State<SearchPage> {
                   } else if (state is SearchResults) {
                     return _buildPodcastList(state.podcasts, '搜尋結果');
                   } else if (state is PopularPodcastsLoaded) {
-                    return _buildPodcastList(state.podcasts, '熱門播客');
+                    return _buildPodcastList(state.podcasts, '🇹🇼 台灣熱門播客排行榜');
                   } else {
                     return const Center(
                       child: Text('開始搜尋您感興趣的播客！'),
@@ -297,11 +301,10 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _onPodcastTap(Podcast podcast) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => PodcastDetailSheet(podcast: podcast),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SimplePodcastDetailPage(podcast: podcast),
+      ),
     );
   }
 } 

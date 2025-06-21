@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:audio_service/audio_service.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/html_utils.dart';
 import '../../data/datasources/audio_player_service.dart';
 import '../../domain/entities/episode.dart';
 import '../../domain/entities/podcast.dart';
@@ -23,6 +25,9 @@ class PlayerPage extends StatefulWidget {
 
 class _PlayerPageState extends State<PlayerPage> {
   bool _isExpanded = false;
+  double _currentSpeed = 1.0;
+  Timer? _sleepTimer;
+  Duration? _sleepTimerDuration;
 
   @override
   void initState() {
@@ -458,28 +463,40 @@ class _PlayerPageState extends State<PlayerPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(
-          onPressed: () => _showSpeedDialog(),
-          icon: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.speed, color: Colors.white70),
-              Text(
-                '1.0x',
-                style: TextStyle(color: Colors.white70, fontSize: 10),
+        StreamBuilder<double>(
+          stream: AudioPlayerService.instance.speed,
+          builder: (context, snapshot) {
+            final speed = snapshot.data ?? 1.0;
+            return IconButton(
+              onPressed: () => _showSpeedDialog(),
+              icon: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.speed, color: Colors.white70),
+                  Text(
+                    '${speed.toStringAsFixed(1)}x',
+                    style: const TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
         IconButton(
           onPressed: () => _showSleepTimerDialog(),
-          icon: const Column(
+          icon: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.bedtime, color: Colors.white70),
+              Icon(
+                _sleepTimer != null ? Icons.bedtime : Icons.bedtime_outlined,
+                color: _sleepTimer != null ? Colors.orange : Colors.white70,
+              ),
               Text(
-                '定時',
-                style: TextStyle(color: Colors.white70, fontSize: 10),
+                _sleepTimer != null ? '已設' : '定時',
+                style: TextStyle(
+                  color: _sleepTimer != null ? Colors.orange : Colors.white70,
+                  fontSize: 10,
+                ),
               ),
             ],
           ),
@@ -542,16 +559,24 @@ class _PlayerPageState extends State<PlayerPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            widget.episode.description.isNotEmpty 
-                ? widget.episode.description 
-                : '暫無集數簡介',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white70,
-              height: 1.5,
-            ),
-          ),
+          const SizedBox(height: 12),
+          widget.episode.description.isNotEmpty
+              ? HtmlUtils.htmlToRichText(
+                  widget.episode.description,
+                  defaultStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    height: 1.5,
+                  ),
+                  textColor: Colors.white70,
+                  linkColor: Colors.lightBlueAccent,
+                )
+              : Text(
+                  '暫無集數簡介',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    height: 1.5,
+                  ),
+                ),
         ],
       ),
     );
@@ -583,7 +608,9 @@ class _PlayerPageState extends State<PlayerPage> {
     }
   }
 
-  void _showSpeedDialog() {
+  void _showSpeedDialog() async {
+    final currentSpeed = await AudioPlayerService.instance.getSpeed();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -594,13 +621,23 @@ class _PlayerPageState extends State<PlayerPage> {
             for (var speed in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0])
               ListTile(
                 title: Text('${speed}x'),
-                selected: speed == 1.0, // 這裡應該從狀態獲取實際速度
-                onTap: () {
-                  // TODO: 實現播放速度設置
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('播放速度設置為 ${speed}x')),
-                  );
+                selected: (speed - currentSpeed).abs() < 0.01,
+                onTap: () async {
+                  try {
+                    await AudioPlayerService.instance.setSpeed(speed);
+                    setState(() {
+                      _currentSpeed = speed;
+                    });
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('播放速度設置為 ${speed}x')),
+                    );
+                  } catch (e) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('設置播放速度失敗')),
+                    );
+                  }
                 },
               ),
           ],
@@ -617,15 +654,23 @@ class _PlayerPageState extends State<PlayerPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_sleepTimer != null) ...[
+              ListTile(
+                title: const Text('取消定時器'),
+                leading: const Icon(Icons.cancel, color: Colors.red),
+                onTap: () {
+                  _cancelSleepTimer();
+                  Navigator.pop(context);
+                },
+              ),
+              const Divider(),
+            ],
             for (var minutes in [15, 30, 45, 60, 90])
               ListTile(
                 title: Text('$minutes 分鐘'),
                 onTap: () {
-                  // TODO: 實現睡眠定時器設置
+                  _setSleepTimer(Duration(minutes: minutes));
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('定時器設置為 $minutes 分鐘')),
-                  );
                 },
               ),
           ],
@@ -656,6 +701,53 @@ class _PlayerPageState extends State<PlayerPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('收藏功能開發中...')),
     );
+  }
+
+  void _setSleepTimer(Duration duration) {
+    _cancelSleepTimer(); // 取消現有的定時器
+    
+    setState(() {
+      _sleepTimerDuration = duration;
+      _sleepTimer = Timer(duration, () async {
+        await AudioPlayerService.instance.pause();
+        setState(() {
+          _sleepTimer = null;
+          _sleepTimerDuration = null;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('睡眠定時器已到時，播放已暫停')),
+          );
+        }
+      });
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('睡眠定時器已設置為 ${duration.inMinutes} 分鐘'),
+      ),
+    );
+  }
+
+  void _cancelSleepTimer() {
+    if (_sleepTimer != null) {
+      _sleepTimer!.cancel();
+      setState(() {
+        _sleepTimer = null;
+        _sleepTimerDuration = null;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('睡眠定時器已取消')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelSleepTimer();
+    super.dispose();
   }
 
   String _formatDuration(Duration? duration) {
